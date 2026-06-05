@@ -1,0 +1,38 @@
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+const { protect, authorizeRoles } = require('../middleware/auth');
+
+// Public routes
+router.post('/register', authController.registerUser);
+router.post('/login', authController.loginUser);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/request-reset', authController.requestPasswordReset);
+router.post('/reset-password', authController.resetPassword);
+router.post('/request-otp', authController.requestOTP);
+router.post('/verify-otp', authController.verifyOTP);
+
+// Protected routes
+router.get('/me', protect, (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+});
+
+// Admin only - Get all users (example)
+router.get('/users', protect, authorizeRoles('admin'), async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const users = await User.find({}).select('-password');
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = router;
