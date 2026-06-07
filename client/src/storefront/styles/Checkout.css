@@ -5,7 +5,7 @@
 }
 
 .checkout-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0C4C7B 0%, #1B2A49 100%);
   color: white;
   padding: 2rem;
   border-radius: 12px;
@@ -87,9 +87,9 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #fbb731;
   background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(251, 183, 49, 0.1);
 }
 
 .form-row {
@@ -116,7 +116,7 @@
 }
 
 .payment-option:hover {
-  border-color: #667eea;
+  border-color: #fbb731;
   background: #f9f9f9;
 }
 
@@ -124,7 +124,7 @@
   cursor: pointer;
   width: 20px;
   height: 20px;
-  accent-color: #667eea;
+  accent-color: #F37335;
 }
 
 .payment-option span {
@@ -144,12 +144,12 @@
 
 .btn-place-order {
   padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #fbb731 0%, #F37335 100%);
+  color: #1B2A49;
   border: none;
   border-radius: 8px;
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
@@ -159,7 +159,7 @@
 
 .btn-place-order:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 10px 25px rgba(243, 115, 53, 0.3);
 }
 
 .btn-place-order:disabled {
@@ -266,7 +266,7 @@
 }
 
 .breakdown-row.total span:last-child {
-  color: #667eea;
+  color: #F37335;
 }
 
 .security-info {

@@ -170,7 +170,7 @@ export function useNavLabelNormalization(enabled = true) {
     const desired = [
       { text: 'HOME', href: '/' },
       { text: 'MENU', href: '/shop' },
-      { text: 'CHECKOUT', href: '/shop?checkout=1' },
+      { text: 'CHECKOUT', href: '/checkout' },
       { text: 'ORDERS', href: '/orders' },
     ];
 
