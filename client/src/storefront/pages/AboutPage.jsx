@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import aboutTemplate from '../../templates/about.html?raw';
-import { extractBodyMarkup } from '../../utils/template';
+import aboutTemplate from '../templates/about.html?raw';
+import { extractBodyMarkup } from '../utils/template';
 
 export default function AboutPage() {
   const bodyMarkup = useMemo(() => extractBodyMarkup(aboutTemplate), []);

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import pagesTemplate from '../../templates/pages.html?raw';
-import { extractBodyMarkup } from '../../utils/template';
+import pagesTemplate from '../templates/pages.html?raw';
+import { extractBodyMarkup } from '../utils/template';
 
 export default function PagesPage() {
   const bodyMarkup = useMemo(() => extractBodyMarkup(pagesTemplate), []);

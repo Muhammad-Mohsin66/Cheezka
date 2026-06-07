@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import homeTemplate from '../../templates/index.html?raw';
-import { extractBodyMarkup } from '../../utils/template';
+import homeTemplate from '../templates/index.html?raw';
+import { extractBodyMarkup } from '../utils/template';
 
 export default function HomePage() {
   const bodyMarkup = useMemo(() => extractBodyMarkup(homeTemplate), []);

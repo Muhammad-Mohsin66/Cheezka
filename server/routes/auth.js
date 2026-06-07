@@ -13,11 +13,20 @@ router.post('/request-otp', authController.requestOTP);
 router.post('/verify-otp', authController.verifyOTP);
 
 // Protected routes
-router.get('/me', protect, (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: req.user,
-  });
+router.get('/me', protect, async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return next(new (require('../utils/AppError'))('User not found', 404));
+    }
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Admin only - Get all users (example)

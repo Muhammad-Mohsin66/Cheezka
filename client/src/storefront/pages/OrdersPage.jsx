@@ -1,4 +1,4 @@
-import { useOrdersPage } from '../../pageHooks';
+import { useOrdersPage } from '../hooks/pageHooks';
 
 /**
  * OrdersPage — Customer-facing orders view.

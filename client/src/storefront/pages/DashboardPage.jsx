@@ -1,4 +1,4 @@
-import { useDashboardPage } from '../../pageHooks';
+import { useDashboardPage } from '../hooks/pageHooks';
 
 export default function DashboardPage() {
   const { user, displayName, apiStatus, blogs, logout } = useDashboardPage();

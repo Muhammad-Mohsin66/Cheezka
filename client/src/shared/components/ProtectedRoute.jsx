@@ -3,15 +3,18 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * ProtectedRoute Component
- * Restricts access based on:
- * 1. Authentication status
- * 2. User role (RBAC)
+ * ProtectedRoute — Authentication + RBAC guard.
+ * Used by both storefront and admin modules.
  */
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({
+  children,
+  allowedRoles = [],
+  loginPath = '/login',
+  unauthorizedPath = '/unauthorized',
+  fallbackForWrongRole = null,
+}) => {
   const { user, isAuthenticated, loading } = useAuth();
 
-  // Show loading state
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -21,17 +24,17 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
-  // Not authenticated - redirect to login
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
-  // Check if user has required role
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    if (fallbackForWrongRole) {
+      return fallbackForWrongRole;
+    }
+    return <Navigate to={unauthorizedPath} replace />;
   }
 
-  // All checks passed - render component
   return children;
 };
 

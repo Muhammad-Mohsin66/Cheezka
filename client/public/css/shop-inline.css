@@ -383,3 +383,160 @@
             .page-banner h1 { font-size: 2rem; }
             .section-header h2 { font-size: 1.4rem; }
         }
+
+        /* Professional Improvements & Image styles */
+        .menu-card-img-wrap {
+            width: 100%;
+            height: 160px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+            background: #f5f7fa;
+        }
+        .menu-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .menu-card:hover .menu-card-img {
+            transform: scale(1.06);
+        }
+        .menu-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #F37335 0%, #FF6B35 100%);
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .item-row-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .item-row-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #eef0f4;
+            background: #f5f7fa;
+            transition: transform 0.2s ease;
+        }
+        .item-row:hover .item-row-img {
+            transform: scale(1.08);
+        }
+        .list-add-btn {
+            background: linear-gradient(135deg, #0C4C7B 0%, #1B2A49 100%) !important;
+            color: #fbb731 !important;
+            border-radius: 6px !important;
+            padding: 8px 14px !important;
+            transition: opacity 0.2s;
+        }
+        .list-add-btn:hover {
+            opacity: 0.9;
+        }
+        .list-buy-btn {
+            background: linear-gradient(135deg, #fbb731 0%, #F37335 100%) !important;
+            color: #1B2A49 !important;
+            border-radius: 6px !important;
+            padding: 8px 14px !important;
+            border: 0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-left: 6px;
+            transition: opacity 0.2s;
+        }
+        .list-buy-btn:hover {
+            opacity: 0.9;
+        }
+        /* New Card Action Buttons & Price Display */
+        .card-price-display {
+            color: #F37335;
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: 'Nunito Sans', sans-serif;
+            margin: 12px 0 8px;
+            text-align: center;
+        }
+        .card-actions-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .card-add-btn {
+            flex: 1.2;
+            background: linear-gradient(135deg, #0C4C7B 0%, #1B2A49 100%) !important;
+            color: #fbb731 !important;
+            border-radius: 8px !important;
+            padding: 10px 4px !important;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .card-buy-btn {
+            flex: 0.8;
+            background: linear-gradient(135deg, #fbb731 0%, #F37335 100%) !important;
+            color: #1B2A49 !important;
+            border-radius: 8px !important;
+            padding: 10px 4px !important;
+            border: 0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.2s;
+            text-align: center;
+        }
+        .card-add-btn:hover, .card-buy-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+        .card-add-btn:active, .card-buy-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Size box interactivity & active state */
+        .size-box {
+            border: 1px solid #eef0f4;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .size-box:hover {
+            border-color: #fbb731;
+            background: #fffdf5;
+        }
+        .size-box.active {
+            background: #0C4C7B !important;
+            border-color: #0C4C7B !important;
+        }
+        .size-box.active .size-label {
+            color: #fbb731 !important;
+        }
+        .size-box.active .size-price {
+            color: #fff !important;
+        }
+
+        /* Alignment spacer for single-price items */
+        .single-price-wrap {
+            height: 38px;
+            display: block;
+        }
+        .price-amount {
+            display: none;
+        }

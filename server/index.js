@@ -15,6 +15,13 @@ const bankAccountRoutes = require('./routes/bankAccounts');
 const refundRoutes = require('./routes/refunds');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
+// Admin panel routes
+const usersRoutes = require('./routes/users');
+const dealsRoutes = require('./routes/deals');
+const deliveryZonesRoutes = require('./routes/deliveryZones');
+const inventoryRoutes = require('./routes/inventory');
+const auditLogsRoutes = require('./routes/auditLogs');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
@@ -39,6 +46,13 @@ app.use('/api/bank-accounts', bankAccountRoutes);
 app.use('/api/refunds', refundRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+// Admin panel routes
+app.use('/api/users', usersRoutes);
+app.use('/api/deals', dealsRoutes);
+app.use('/api/delivery-zones', deliveryZonesRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/audit-logs', auditLogsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check root endpoint
 app.get('/', (req, res) => {

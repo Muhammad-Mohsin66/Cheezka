@@ -43,8 +43,8 @@ const Header = () => {
             Cart 🛒
           </Link>
 
-          {user && (
-            <Link to={`/dashboard/${user.role}`} className="nav-link" onClick={() => setMobileMenuOpen(false)}>
+          {user?.role === 'customer' && (
+            <Link to="/dashboard" className="nav-link" onClick={() => setMobileMenuOpen(false)}>
               Dashboard
             </Link>
           )}

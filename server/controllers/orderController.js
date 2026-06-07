@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
@@ -40,14 +41,20 @@ exports.placeOrder = async (req, res) => {
   const preparedItems = [];
 
   for (const item of orderItems) {
-    if (!item.product || !item.size || !item.quantity) {
-      throw new AppError('Each order item must have product, size, and quantity', 400);
+    if ((!item.product && !item.name) || !item.size || !item.quantity) {
+      throw new AppError('Each order item must have product (or name), size, and quantity', 400);
     }
 
-    // Fetch product
-    const product = await Product.findById(item.product);
+    // Fetch product (try ID first, then fallback to name lookup)
+    let product = null;
+    if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
+      product = await Product.findById(item.product);
+    } else if (item.name) {
+      product = await Product.findOne({ name: { $regex: new RegExp(`^${item.name}$`, 'i') } });
+    }
+
     if (!product) {
-      throw new AppError(`Product ${item.product} not found`, 404);
+      throw new AppError(`Product ${item.product || item.name} not found`, 404);
     }
 
     if (product.isOutOfStock) {

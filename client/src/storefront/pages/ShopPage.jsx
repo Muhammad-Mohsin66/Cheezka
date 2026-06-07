@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import shopTemplate from '../../templates/shop.html?raw';
-import { extractBodyMarkup } from '../../utils/template';
-import { useShopPage } from '../../pageHooks';
+import shopTemplate from '../templates/shop.html?raw';
+import { extractBodyMarkup } from '../utils/template';
+import { useShopPage } from '../hooks/pageHooks';
 
 export default function ShopPage() {
   useShopPage();

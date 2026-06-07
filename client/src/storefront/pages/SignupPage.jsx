@@ -1,4 +1,5 @@
-import { useSignupPage } from '../../pageHooks';
+import AuthLayout from '../layouts/AuthLayout';
+import { useSignupPage } from '../hooks/pageHooks';
 
 export default function SignupPage() {
   const {
@@ -6,6 +7,8 @@ export default function SignupPage() {
     setName,
     email,
     setEmail,
+    phone,
+    setPhone,
     password,
     setPassword,
     confirmPassword,
@@ -14,38 +17,12 @@ export default function SignupPage() {
     setTermsAgreed,
     status,
     onSubmit,
+    checkoutNotice,
+    loginHref,
   } = useSignupPage();
 
   return (
-    <div className="page-root">
-      <div className="top-fixed">
-        <div className="container navp0">
-          <div className="row overflows smallscreen-wrapper align-items-center">
-            <div className="col pt-1 pb-1">
-              <nav className="navbar pl-0 pr-0 navbar-expand-lg minicartfix">
-                <a className="navbar-brand" href="/" title="cheezka" rel="home">
-                  <img src="assets/images/2020/12/Logo_light.svg" alt="cheezka" />
-                </a>
-                <button className="navbar-toggler first-button pt-1" type="button" data-toggle="collapse" data-target="#main_nav" aria-controls="main_nav" aria-expanded="false" aria-label="Toggle navigation">
-                  <span className="animated-icon1"><span /><span /><span /></span>
-                </button>
-                <div className="justify-content-end custom-mega-menu custom-mega-menub collapse navbar-collapse" id="main_nav">
-                  <ul id="menu-menu-1" className="navbar-nav">
-                    <li className="menu-item"><a href="/">HOME</a></li>
-                    <li className="menu-item"><a href="/shop">SHOP</a></li>
-                    <li className="menu-item"><a href="/about">ABOUT</a></li>
-                    <li className="menu-item"><a href="/pages">PAGES</a></li>
-                    <li className="menu-item"><a href="/contact">CONTACT</a></li>
-                    <li className="menu-item ck-ml-8"><a href="/contact" className="ck-nav-cta"><i className="fa fa-envelope ck-mr-6" />CONTACT US</a></li>
-                    <li className="menu-item ck-ml-8"><a href="/login" className="ck-nav-cta"><i className="fa fa-sign-in-alt ck-mr-6" />LOGIN</a></li>
-                  </ul>
-                </div>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <AuthLayout>
       <main>
         <div className="auth-wrapper">
           <div className="auth-card">
@@ -54,6 +31,14 @@ export default function SignupPage() {
               <h1>Join Cheezka!</h1>
               <p>Create your account in seconds</p>
             </div>
+            {checkoutNotice ? (
+              <div
+                id="checkout-auth-notice"
+                style={{ display: 'block', backgroundColor: '#fff3e0', color: '#e65100', marginBottom: '16px', padding: '12px', borderRadius: '6px' }}
+              >
+                {checkoutNotice}
+              </div>
+            ) : null}
             <form id="signup-form" method="post" action="#" onSubmit={onSubmit}>
               <div className="form-group">
                 <label htmlFor="signup-name">Full Name</label>
@@ -62,6 +47,10 @@ export default function SignupPage() {
               <div className="form-group">
                 <label htmlFor="signup-email">Email Address</label>
                 <input type="email" id="signup-email" name="email" placeholder="your@email.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label htmlFor="signup-phone">Phone Number</label>
+                <input type="tel" id="signup-phone" name="phone" placeholder="10-digit phone number" required value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="form-group">
                 <label htmlFor="signup-password">Password</label>
@@ -83,7 +72,7 @@ export default function SignupPage() {
               <button type="submit" className="submit-btn">Create Account</button>
             </form>
             <div className="login-link">
-              Already have an account? <a href="/login">Login here</a>
+              Already have an account? <a href={loginHref}>Login here</a>
             </div>
             <div className="home-link">
               <a href="/"><i className="fa fa-chevron-left ck-mr-5" /> Back to Home</a>
@@ -91,6 +80,6 @@ export default function SignupPage() {
           </div>
         </div>
       </main>
-    </div>
+    </AuthLayout>
   );
 }
