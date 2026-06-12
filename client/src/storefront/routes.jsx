@@ -9,6 +9,7 @@ import ContactPage from './pages/ContactPage';
 import PagesPage from './pages/PagesPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import OrdersPage from './pages/OrdersPage';
 import CustomerOrders from './pages/CustomerOrders';
@@ -111,6 +112,14 @@ export default function StorefrontRoutes() {
         element={
           <RouteFrame bodyClass="auth-page" title="Sign Up – Cheezka Street Food" disableNavEnhancements>
             <SignupPage />
+          </RouteFrame>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <RouteFrame bodyClass="auth-page" title="Forgot Password – Cheezka Street Food" disableNavEnhancements>
+            <ForgotPasswordPage />
           </RouteFrame>
         }
       />

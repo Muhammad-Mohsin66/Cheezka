@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const OTPReset = require('../models/OTPReset');
 const { generateToken } = require('../utils/jwt');
 const AppError = require('../utils/AppError');
 const {
@@ -335,6 +336,176 @@ exports.verifyOTP = async (req, res, next) => {
       message: 'OTP verified successfully',
       token,
       user: user.toJSON(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Helper to compute salted SHA256 hash of an OTP
+ */
+const hashOtp = (otp, salt) => {
+  const payload = `${salt}:${otp}`;
+  return crypto.createHash('sha256').update(payload).digest('hex');
+};
+
+/**
+ * Request OTP Password Reset Session
+ * POST /api/auth/reset-request
+ */
+exports.resetRequest = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(new AppError('Please provide an email address.', 400));
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      // Username enumeration protection or direct return: let's match the guide's standard
+      return next(new AppError('Email address not found.', 404));
+    }
+
+    if (!user.isActive) {
+      return next(new AppError('Your account is inactive.', 403));
+    }
+
+    // Generate secure 6-digit OTP code & requestId & random salt
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const requestId = crypto.randomBytes(24).toString('base64url');
+    const salt = crypto.randomBytes(16).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins expiry
+
+    // Save reset record
+    await OTPReset.create({
+      requestId,
+      email: normalizedEmail,
+      otpHash: hashOtp(otp, salt),
+      otpSalt: salt,
+      expiresAt,
+    });
+
+    // In development mode, log the generated OTP code to enable testing without working SMTP
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[OTP Reset Debug] Generated OTP for ${normalizedEmail}: ${otp}`);
+    }
+
+    // Send OTP email
+    await sendOTPEmail(normalizedEmail, otp);
+
+    res.status(200).json({
+      success: true,
+      requestId,
+      expiresAt: Math.floor(expiresAt.getTime() / 1000),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify OTP code in Password Reset Session
+ * POST /api/auth/reset-verify
+ */
+exports.resetVerify = async (req, res, next) => {
+  try {
+    const { requestId, otp } = req.body;
+
+    if (!requestId || !otp) {
+      return next(new AppError('Request ID and OTP code are required.', 400));
+    }
+
+    const record = await OTPReset.findOne({ requestId });
+    if (!record) {
+      return next(new AppError('Invalid reset session.', 400));
+    }
+
+    // Check expiry
+    if (new Date() > record.expiresAt) {
+      await OTPReset.deleteOne({ requestId });
+      return next(new AppError('OTP code has expired.', 400));
+    }
+
+    // Check attempt threshold limit (max 5)
+    if (record.attempts >= 5) {
+      await OTPReset.deleteOne({ requestId });
+      return next(new AppError('Too many failed attempts. Session locked.', 400));
+    }
+
+    // Hash the input OTP and run timing-attack-resistant compare_digest
+    const inputHash = hashOtp(otp.trim(), record.otpSalt);
+    const bufferA = Buffer.from(inputHash, 'hex');
+    const bufferB = Buffer.from(record.otpHash, 'hex');
+
+    const isCorrect = (bufferA.length === bufferB.length) && crypto.timingSafeEqual(bufferA, bufferB);
+
+    if (!isCorrect) {
+      // Increment attempt counter on failure
+      record.attempts += 1;
+      await record.save();
+
+      // If they hit max attempts now, clean up immediately
+      if (record.attempts >= 5) {
+        await OTPReset.deleteOne({ requestId });
+        return next(new AppError('Too many failed attempts. Session locked.', 400));
+      }
+
+      return next(new AppError('Invalid OTP code.', 400));
+    }
+
+    // Mark as verified
+    record.verified = true;
+    await record.save();
+
+    res.status(200).json({
+      success: true,
+      verified: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Complete Reset & Change Password
+ * POST /api/auth/reset-complete
+ */
+exports.resetComplete = async (req, res, next) => {
+  try {
+    const { requestId, newPassword } = req.body;
+
+    if (!requestId || !newPassword) {
+      return next(new AppError('Request ID and new password are required.', 400));
+    }
+
+    if (newPassword.length < 6) {
+      return next(new AppError('Password must be at least 6 characters.', 400));
+    }
+
+    const record = await OTPReset.findOne({ requestId });
+    if (!record || !record.verified) {
+      return next(new AppError('Invalid or unverified reset session.', 400));
+    }
+
+    const user = await User.findOne({ email: record.email });
+    if (!user) {
+      return next(new AppError('User profile not found.', 404));
+    }
+
+    // Update password (mongoose pre-save handles bcrypt hashing)
+    user.password = newPassword;
+    await user.save();
+
+    // Immediately remove reset record to prevent replay attacks
+    await OTPReset.deleteOne({ requestId });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully.',
     });
   } catch (error) {
     next(error);

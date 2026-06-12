@@ -11,6 +11,9 @@ router.post('/request-reset', authController.requestPasswordReset);
 router.post('/reset-password', authController.resetPassword);
 router.post('/request-otp', authController.requestOTP);
 router.post('/verify-otp', authController.verifyOTP);
+router.post('/reset-request', authController.resetRequest);
+router.post('/reset-verify', authController.resetVerify);
+router.post('/reset-complete', authController.resetComplete);
 
 // Protected routes
 router.get('/me', protect, async (req, res, next) => {

@@ -46,7 +46,7 @@ export default function LoginPage() {
                 <label className="ck-remember-label">
                   <input type="checkbox" name="remember" id="remember-me" className="ck-mr-5" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} /> Remember me
                 </label>
-                <a href="#">Forgot password?</a>
+                <a href="/forgot-password">Forgot password?</a>
               </div>
               <div id="form-status" style={{ display: status.message ? 'block' : 'none', backgroundColor: status.bg, color: status.color }}>
                 {status.message}

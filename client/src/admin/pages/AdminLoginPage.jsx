@@ -129,6 +129,9 @@ export default function AdminLoginPage() {
               required
               style={styles.input}
             />
+            <div style={styles.forgotPasswordWrap}>
+              <a href="/forgot-password" style={styles.forgotPasswordLink}>Forgot password?</a>
+            </div>
           </div>
 
           <button
@@ -279,5 +282,15 @@ const styles = {
     color: '#666666',
     fontSize: '13px',
     textDecoration: 'none',
+  },
+  forgotPasswordWrap: {
+    textAlign: 'right',
+    marginTop: '4px',
+  },
+  forgotPasswordLink: {
+    color: '#FF6B35',
+    fontSize: '12px',
+    textDecoration: 'none',
+    fontWeight: '600',
   },
 };
