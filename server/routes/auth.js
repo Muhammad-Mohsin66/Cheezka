@@ -32,8 +32,8 @@ router.get('/me', protect, async (req, res, next) => {
   }
 });
 
-// Admin only - Get all users (example)
-router.get('/users', protect, authorizeRoles('admin'), async (req, res, next) => {
+// Admin and Employee - Get all users
+router.get('/users', protect, authorizeRoles('admin', 'employee'), async (req, res, next) => {
   try {
     const User = require('../models/User');
     const users = await User.find({}).select('-password');

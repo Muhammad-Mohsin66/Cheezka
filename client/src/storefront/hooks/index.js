@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { convertLegacyHref, isLegacyInternalHref } from '../utils/routes';
+import { useAuth } from '../../shared/context/AuthContext';
 
 export function useGlobalStyles() {
   useEffect(() => {
@@ -197,27 +198,56 @@ export function useNavLabelNormalization(enabled = true) {
 export function useNavbarProfile(enabled = true) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!enabled) return;
     const navMenu = document.getElementById('menu-menu-1');
     if (!navMenu) return;
 
-    const user = (() => {
-      try { return JSON.parse(localStorage.getItem('cheezka_user') || 'null'); } catch { return null; }
-    })();
-
     let loginItem = null;
     navMenu.querySelectorAll('li.menu-item').forEach((li) => {
       const a = li.querySelector('a');
-      if (a && a.getAttribute('href') === '/login') loginItem = li;
+      if (a) {
+        const text = (a.textContent || '').trim().toUpperCase();
+        const href = a.getAttribute('href') || '';
+        if (text === 'LOGIN' || href === '/login' || href === 'login.html' || href.endsWith('/login.html')) {
+          loginItem = li;
+        }
+      }
     });
+
     if (!loginItem) return;
 
-    if (user?.email) {
+    if (isAuthenticated && user) {
+      const avatarUrl = user.avatar || user.profileImage || null;
+      const initials = (() => {
+        if (!user.name) return '?';
+        const parts = user.name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      })();
+
+      const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" class="profile-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px;" alt="${user.name}" />`
+        : `<div class="profile-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background-color: #FF6B35; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 8px;">${initials}</div>`;
+
       loginItem.innerHTML =
-        `<button id="profile-btn" class="profile-btn ck-nav-cta"><i class="fa fa-user-circle ck-mr-6"></i><span id="profile-email">${(user.email.split('@')[0] || '').replace(/[<>&"']/g, '')}</span></button>` +
-        `<div id="profile-dropdown" class="profile-dropdown"><div class="ck-profile-dd__header"><p class="ck-profile-dd__title">Account</p><p class="ck-profile-dd__email">${(user.email || '').replace(/[<>&"']/g, '')}</p></div><a href="/dashboard"><i class="fa fa-cog ck-mr-6"></i>Profile Settings</a><button id="logout-btn"><i class="fa fa-sign-out-alt ck-mr-6"></i>Logout</button></div>`;
+        `<div style="position: relative; display: inline-block;">` +
+        `<button id="profile-btn" class="profile-btn ck-nav-cta" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
+        avatarHtml +
+        `<span id="profile-email" style="margin-left: 4px;">${(user.name || user.email.split('@')[0]).replace(/[<>&"']/g, '')}</span>` +
+        `</button>` +
+        `<div id="profile-dropdown" class="profile-dropdown">` +
+        `<div class="ck-profile-dd__header">` +
+        `<p class="ck-profile-dd__title">${(user.name || 'Account').replace(/[<>&"']/g, '')}</p>` +
+        `<p class="ck-profile-dd__email">${(user.email || '').replace(/[<>&"']/g, '')}</p>` +
+        `</div>` +
+        `<a href="/dashboard"><i class="fa fa-user ck-mr-6"></i>My Profile</a>` +
+        `<a href="/orders"><i class="fa fa-shopping-bag ck-mr-6"></i>My Orders</a>` +
+        `<button id="logout-btn"><i class="fa fa-sign-out-alt ck-mr-6"></i>Logout</button>` +
+        `</div>` +
+        `</div>`;
 
       const profileBtn = document.getElementById('profile-btn');
       const profileDropdown = document.getElementById('profile-dropdown');
@@ -234,10 +264,7 @@ export function useNavbarProfile(enabled = true) {
       };
       const logoutHandler = (e) => {
         e.preventDefault();
-        localStorage.removeItem('cheezka_user');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('cheezka_checkout_form');
-        localStorage.removeItem('cheezka_login_form');
+        logout();
         navigate('/login');
       };
 
@@ -245,14 +272,20 @@ export function useNavbarProfile(enabled = true) {
       logoutBtn?.addEventListener('click', logoutHandler);
       document.addEventListener('click', closeHandler);
 
+      loginItem.classList.add('ck-pos-rel');
+
       return () => {
         profileBtn?.removeEventListener('click', toggleHandler);
         logoutBtn?.removeEventListener('click', logoutHandler);
         document.removeEventListener('click', closeHandler);
       };
+    } else {
+      loginItem.innerHTML =
+        `<a href="/login" class="ck-nav-cta"><i class="fa fa-sign-in-alt ck-mr-6"></i>LOGIN</a>`;
+      loginItem.classList.remove('ck-pos-rel');
     }
     return undefined;
-  }, [enabled, location.pathname, navigate]);
+  }, [enabled, location.pathname, navigate, user, isAuthenticated, logout]);
 }
 
 export function usePreventRefreshMonitor() {

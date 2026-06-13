@@ -35,5 +35,22 @@ npm start
 
 ## Notes
 
-- Run the frontend and backend in separate terminals.
-- The root `package.json` only contains the `recharts` dependency and does not define run scripts.
+- You can run the entire project (both Frontend & Backend) concurrently from the root directory using a single command:
+  ```bash
+  npm run dev:full
+  ```
+- Alternatively, you can run the frontend and backend in separate terminals as described above.
+
+Admin Credentials
+Email: admin@cheezka.com
+Password: admin123
+Other Accounts (For Testing)
+Employee:
+Email: employee@cheezka.com
+Password: employee123
+Rider:
+Email: rider1@cheezka.com
+Password: rider123
+Customer:
+Email: customer1@cheezka.com
+Password: customer123

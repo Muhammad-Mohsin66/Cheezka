@@ -67,6 +67,10 @@ exports.createUser = async (req, res, next) => {
       return next(new AppError('Please provide all required fields', 400));
     }
 
+    if (password.length < 8) {
+      return next(new AppError('Password must be at least 8 characters', 400));
+    }
+
     const allowedRoles = ['admin', 'employee', 'rider'];
     if (!allowedRoles.includes(role)) {
       return next(new AppError(`Role must be one of: ${allowedRoles.join(', ')}`, 400));
@@ -132,8 +136,8 @@ exports.updateUser = async (req, res, next) => {
 exports.resetUserPassword = async (req, res, next) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return next(new AppError('Password must be at least 6 characters', 400));
+    if (!newPassword || newPassword.length < 8) {
+      return next(new AppError('Password must be at least 8 characters', 400));
     }
 
     const user = await User.findById(req.params.id).select('+password');

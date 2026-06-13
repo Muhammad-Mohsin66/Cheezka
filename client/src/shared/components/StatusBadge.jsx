@@ -16,6 +16,7 @@ const StatusBadge = ({ type = 'order', status }) => {
       'Preparing': '#FF9800',
       'Ready': '#8BC34A',
       'Assigned': '#9C27B0',
+      'Assigned to Rider': '#9C27B0',
       'Handover to Rider': '#00BCD4',
       'Delivered': '#4CAF50',
       'Cancelled': '#F44336',

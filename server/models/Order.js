@@ -66,7 +66,7 @@ const orderSchema = new mongoose.Schema(
     phoneNumber: {
       type: String,
       required: [true, 'Phone number is required'],
-      match: [/^\d{10}$/, 'Phone number must be a valid 10-digit number'],
+      match: [/^\d{11}$/, 'Phone number must be a valid 11-digit number'],
     },
 
     // Amount Details
@@ -156,7 +156,7 @@ orderSchema.pre('find', function () {
   this.populate('orderItems.product', 'name basePrice');
 });
 
-orderSchema.pre('findById', function () {
+orderSchema.pre('findOne', function () {
   this.populate('customer', 'name email phone');
   this.populate('rider', 'name email phone');
   this.populate('orderItems.product', 'name basePrice');

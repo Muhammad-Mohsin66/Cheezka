@@ -88,8 +88,8 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setStatus({ message: 'Password must be at least 6 characters long.', error: true });
+    if (newPassword.length < 8) {
+      setStatus({ message: 'Password must be at least 8 characters long.', error: true });
       return;
     }
 

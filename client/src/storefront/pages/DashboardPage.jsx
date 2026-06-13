@@ -1,7 +1,7 @@
 import { useDashboardPage } from '../hooks/pageHooks';
 
 export default function DashboardPage() {
-  const { user, displayName, apiStatus, blogs, logout } = useDashboardPage();
+  const { user, displayName, apiStatus, blogs = [], logout } = useDashboardPage();
 
   return (
     <div className="page-root">

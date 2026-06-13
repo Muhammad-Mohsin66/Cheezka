@@ -154,8 +154,8 @@ export function useSignupPage() {
       setStatus({ message: 'Please enter a valid email address', bg: '#ffcdd2', color: '#c62828' });
       return;
     }
-    if (password.length < 6) {
-      setStatus({ message: 'Password must be at least 6 characters', bg: '#ffcdd2', color: '#c62828' });
+    if (password.length < 8) {
+      setStatus({ message: 'Password must be at least 8 characters', bg: '#ffcdd2', color: '#c62828' });
       return;
     }
     if (password !== confirmPassword) {
@@ -167,8 +167,8 @@ export function useSignupPage() {
       return;
     }
     const phoneVal = phone.trim();
-    if (!phoneVal || !/^\d{10}$/.test(phoneVal)) {
-      setStatus({ message: 'Please enter a valid 10-digit phone number', bg: '#ffcdd2', color: '#c62828' });
+    if (!phoneVal || !/^\d{11}$/.test(phoneVal)) {
+      setStatus({ message: 'Please enter a valid 11-digit phone number', bg: '#ffcdd2', color: '#c62828' });
       return;
     }
 
@@ -619,10 +619,10 @@ export function useShopPage(menuVersion = 0) {
           };
         });
 
-        // Ensure 10-digit phone number mapping for backend validator
+        // Ensure 11-digit phone number mapping for backend validator
         let normalizedPhone = phone.replace(/[^0-9]/g, '');
-        if (normalizedPhone.length > 10) normalizedPhone = normalizedPhone.slice(-10);
-        else if (normalizedPhone.length < 10) normalizedPhone = normalizedPhone.padStart(10, '0');
+        if (normalizedPhone.length > 11) normalizedPhone = normalizedPhone.slice(-11);
+        else if (normalizedPhone.length < 11) normalizedPhone = normalizedPhone.padStart(11, '0');
 
         const savedOrder = await createOrder({
           orderItems: mappedItems,

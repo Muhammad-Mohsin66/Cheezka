@@ -22,6 +22,10 @@ exports.registerUser = async (req, res, next) => {
       return next(new AppError('Please provide all required fields', 400));
     }
 
+    if (password.length < 8) {
+      return next(new AppError('Password must be at least 8 characters', 400));
+    }
+
     // Check if user already exists
     let user = await User.findOne({
       $or: [{ email }, { phone }],
@@ -482,8 +486,8 @@ exports.resetComplete = async (req, res, next) => {
       return next(new AppError('Request ID and new password are required.', 400));
     }
 
-    if (newPassword.length < 6) {
-      return next(new AppError('Password must be at least 6 characters.', 400));
+    if (newPassword.length < 8) {
+      return next(new AppError('Password must be at least 8 characters.', 400));
     }
 
     const record = await OTPReset.findOne({ requestId });

@@ -387,18 +387,33 @@
         /* Professional Improvements & Image styles */
         .menu-card-img-wrap {
             width: 100%;
-            height: 160px;
+            height: 180px;
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 12px;
             position: relative;
-            background: #f5f7fa;
+            background: linear-gradient(135deg, #fbb731 0%, #F37335 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-card-img-wrap::before {
+            content: '🍽️';
+            font-size: 3rem;
+            position: absolute;
+            opacity: 0.25;
+            z-index: 0;
         }
         .menu-card-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        .menu-card-img[data-error="1"] {
+            display: none;
         }
         .menu-card:hover .menu-card-img {
             transform: scale(1.06);

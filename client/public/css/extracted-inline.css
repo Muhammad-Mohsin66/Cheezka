@@ -147,3 +147,38 @@ button.ck-nav-cta {
 
 
 .ck-pos-rel { position: relative !important; }
+
+#profile-btn {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  font-family: 'Nunito Sans', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: color 0.2s ease !important;
+}
+
+#profile-btn:hover {
+  color: #fbb731 !important;
+}
+
+#profile-email {
+  font-family: 'Nunito Sans', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  color: #fff !important;
+  margin-left: 6px !important;
+  transition: color 0.2s ease !important;
+}
+
+#profile-btn:hover #profile-email {
+  color: #fbb731 !important;
+}

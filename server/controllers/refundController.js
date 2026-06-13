@@ -41,7 +41,7 @@ exports.requestRefund = async (req, res) => {
   }
 
   // Verify order belongs to customer
-  if (order.customer.toString() !== req.user.id) {
+  if ((order.customer?._id || order.customer || '').toString() !== req.user.id) {
     throw new AppError('You can only request refund for your own order', 403);
   }
 
@@ -214,7 +214,7 @@ exports.getRefundDetails = async (req, res) => {
   }
 
   // Customer can only view their own refunds
-  if (req.user.role !== 'admin' && refund.user.toString() !== req.user.id) {
+  if (req.user.role !== 'admin' && (refund.user?._id || refund.user || '').toString() !== req.user.id) {
     throw new AppError('You can only view your own refunds', 403);
   }
 

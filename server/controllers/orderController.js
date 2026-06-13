@@ -28,8 +28,8 @@ exports.placeOrder = async (req, res) => {
     throw new AppError('Valid shipping address is required (min 5 characters)', 400);
   }
 
-  if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
-    throw new AppError('Phone number must be a valid 10-digit number', 400);
+  if (!phoneNumber || !/^\d{11}$/.test(phoneNumber)) {
+    throw new AppError('Phone number must be a valid 11-digit number', 400);
   }
 
   if (!paymentMethod || !['COD', 'Online'].includes(paymentMethod)) {
@@ -174,7 +174,7 @@ exports.cancelOrder = async (req, res) => {
   }
 
   // Verify ownership
-  if (order.customer.toString() !== req.user.id) {
+  if ((order.customer?._id || order.customer || '').toString() !== req.user.id) {
     throw new AppError('You can only cancel your own orders', 403);
   }
 
@@ -298,12 +298,13 @@ exports.updateOrderStatus = async (req, res) => {
   await order.save();
 
   // Send notifications based on status change
-  const customer = await User.findById(order.customer);
+  const customer = order.customer && order.customer.email ? order.customer : await User.findById(order.customer);
+  const customerId = order.customer?._id || order.customer;
   
   // Notify customer of status updates
-  if (orderStatus !== 'Pending') {
+  if (orderStatus !== 'Pending' && customer) {
     await notificationService.createNotification(
-      order.customer,
+      customerId,
       `Order ${orderStatus}`,
       `Your order #${order._id} status has been updated to ${orderStatus}`,
       'order',
@@ -311,11 +312,13 @@ exports.updateOrderStatus = async (req, res) => {
     );
 
     // Send email to customer
-    await notificationService.sendEmailNotification(
-      customer.email,
-      `Order Status: ${orderStatus}`,
-      `Your order #${order._id} status has been updated to ${orderStatus}.`
-    );
+    if (customer.email) {
+      await notificationService.sendEmailNotification(
+        customer.email,
+        `Order Status: ${orderStatus}`,
+        `Your order #${order._id} status has been updated to ${orderStatus}.`
+      );
+    }
   }
 
   // If assigning to rider, also notify the rider
@@ -399,7 +402,7 @@ exports.assignRider = async (req, res) => {
  * Get all deliveries assigned to rider
  */
 exports.getMyDeliveries = async (req, res) => {
-  const { status = 'Assigned to Rider', sortBy = '-createdAt' } = req.query;
+  const { status, sortBy = '-createdAt' } = req.query;
 
   const filter = {
     rider: req.user.id,
@@ -407,6 +410,8 @@ exports.getMyDeliveries = async (req, res) => {
 
   if (status) {
     filter.orderStatus = status;
+  } else {
+    filter.orderStatus = { $in: ['Assigned to Rider', 'Handover to Rider'] };
   }
 
   const orders = await Order.find(filter).sort(sortBy);
@@ -438,7 +443,7 @@ exports.updateDeliveryStatus = async (req, res) => {
   }
 
   // Verify rider ownership
-  if (order.rider.toString() !== req.user.id) {
+  if ((order.rider?._id || order.rider || '').toString() !== req.user.id) {
     throw new AppError('You can only update your assigned deliveries', 403);
   }
 
@@ -479,10 +484,10 @@ exports.getOrderDetails = async (req, res) => {
 
   // Verify access (customer, admin, or assigned rider)
   if (
-    order.customer.toString() !== req.user.id &&
+    (order.customer?._id || order.customer || '').toString() !== req.user.id &&
     req.user.role !== 'admin' &&
     req.user.role !== 'employee' &&
-    order.rider?.toString() !== req.user.id
+    (order.rider?._id || order.rider || '').toString() !== req.user.id
   ) {
     throw new AppError('You do not have access to this order', 403);
   }

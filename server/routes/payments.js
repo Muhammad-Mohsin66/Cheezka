@@ -12,13 +12,13 @@ const uploadPaymentScreenshot = require('../middleware/uploadPayment');
 router.post(
   '/upload/:orderId',
   protect,
-  authorizeRoles('customer'),
+  authorizeRoles('customer', 'admin'),
   uploadPaymentScreenshot.single('screenshot'),
   paymentController.uploadPaymentScreenshot
 );
 
 // Get my payments
-router.get('/my-payments/list', protect, authorizeRoles('customer'), paymentController.getMyPayments);
+router.get('/my-payments/list', protect, authorizeRoles('customer', 'admin'), paymentController.getMyPayments);
 
 /**
  * ADMIN ROUTES (Protected)

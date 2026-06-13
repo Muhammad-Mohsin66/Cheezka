@@ -23,12 +23,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a phone number'],
       unique: true,
-      match: [/^\d{10}$/, 'Phone number must be 10 digits'],
+      match: [/^\d{11}$/, 'Phone number must be 11 digits'],
     },
     password: {
       type: String,
       required: [true, 'Please provide a password'],
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [8, 'Password must be at least 8 characters'],
       select: false, // Don't return password by default
     },
     role: {

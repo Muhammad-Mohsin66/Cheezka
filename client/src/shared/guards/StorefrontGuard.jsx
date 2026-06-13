@@ -15,7 +15,7 @@ export default function StorefrontGuard({ children, requireAuth = true }) {
 
   return (
     <ProtectedRoute
-      allowedRoles={['customer']}
+      allowedRoles={['customer', 'admin']}
       fallbackForWrongRole={
         <Navigate to="/unauthorized" replace state={{ from: 'storefront' }} />
       }

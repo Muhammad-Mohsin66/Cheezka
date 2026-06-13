@@ -1,4 +1,12 @@
 {
+  "name": "cheezka-root",
+  "version": "1.0.0",
+  "scripts": {
+    "dev:full": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
   "dependencies": {
     "recharts": "^3.8.1"
   }

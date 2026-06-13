@@ -46,7 +46,7 @@ exports.uploadPaymentScreenshot = async (req, res) => {
   }
 
   // Verify customer ownership
-  if (order.customer.toString() !== req.user.id) {
+  if ((order.customer?._id || order.customer || '').toString() !== req.user.id) {
     throw new AppError('You can only upload payment for your own order', 403);
   }
 
@@ -294,7 +294,7 @@ exports.getPaymentDetails = async (req, res) => {
 
   // Verify access (customer, admin, or related user)
   if (
-    payment.user.toString() !== req.user.id &&
+    (payment.user?._id || payment.user || '').toString() !== req.user.id &&
     req.user.role !== 'admin' &&
     req.user.role !== 'employee'
   ) {

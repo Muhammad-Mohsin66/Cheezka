@@ -8,13 +8,13 @@ const { protect, authorizeRoles } = require('../middleware/auth');
  */
 
 // Place new order
-router.post('/', protect, authorizeRoles('customer'), orderController.placeOrder);
+router.post('/', protect, authorizeRoles('customer', 'admin'), orderController.placeOrder);
 
 // Get my orders
-router.get('/my-orders/list', protect, authorizeRoles('customer'), orderController.getMyOrders);
+router.get('/my-orders/list', protect, authorizeRoles('customer', 'admin'), orderController.getMyOrders);
 
 // Cancel my order
-router.patch('/:orderId/cancel', protect, authorizeRoles('customer'), orderController.cancelOrder);
+router.patch('/:orderId/cancel', protect, authorizeRoles('customer', 'admin'), orderController.cancelOrder);
 
 /**
  * ADMIN/EMPLOYEE ROUTES (Protected)

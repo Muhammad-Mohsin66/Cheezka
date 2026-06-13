@@ -6,8 +6,8 @@ const refundController = require('../controllers/refundController');
 // ─── Static routes MUST come before dynamic /:refundId routes ─────────────────
 
 // Customer routes
-router.post('/request', protect, authorizeRoles('customer'), refundController.requestRefund);
-router.get('/my-refunds', protect, authorizeRoles('customer'), refundController.getMyRefunds);
+router.post('/request', protect, authorizeRoles('customer', 'admin'), refundController.requestRefund);
+router.get('/my-refunds', protect, authorizeRoles('customer', 'admin'), refundController.getMyRefunds);
 
 // Admin static routes (must be before /:refundId)
 router.get('/admin/all', protect, authorizeRoles('admin'), refundController.getAllRefunds);

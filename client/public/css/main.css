@@ -1688,6 +1688,7 @@ body.admin-bar .full-screen2 .nav-button {
   bottom: 0;
   padding: 0 0 40px 38px;
   color: #fff;
+  z-index: 2;
 }
 @media all and (max-width: 767px) {
   .hero-bg .hero-bg-text {

@@ -122,7 +122,7 @@ const OrdersManagement = () => {
             ? {
                 ...order,
                 assignedRider: rider,
-                orderStatus: 'Assigned',
+                orderStatus: 'Assigned to Rider',
               }
             : order
         )

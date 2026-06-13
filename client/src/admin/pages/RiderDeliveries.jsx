@@ -11,6 +11,7 @@ const RiderDeliveries = () => {
   // States
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [handoverModal, setHandoverModal] = useState(false);
   const [completeModal, setCompleteModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [completing, setCompleting] = useState(false);
@@ -32,6 +33,39 @@ const RiderDeliveries = () => {
       showError('Failed to load deliveries');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkHandover = (orderId) => {
+    setSelectedOrderId(orderId);
+    setHandoverModal(true);
+  };
+
+  const handleConfirmHandover = async () => {
+    if (!selectedOrderId) return;
+
+    try {
+      setCompleting(true);
+      await api.patch(`/orders/${selectedOrderId}/delivery-status`, {
+        newStatus: 'Handover to Rider',
+      });
+      showSuccess('Order marked as received (Handover to Rider)');
+
+      // Update local state
+      setDeliveries((prev) =>
+        prev.map((delivery) =>
+          delivery._id === selectedOrderId
+            ? { ...delivery, orderStatus: 'Handover to Rider' }
+            : delivery
+        )
+      );
+
+      setHandoverModal(false);
+      setSelectedOrderId(null);
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to update status');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -100,16 +134,52 @@ const RiderDeliveries = () => {
       width: '150px',
       render: (value) => <StatusBadge type="order" status={value} />,
     },
-  ];
-
-  const actions = [
     {
-      label: 'Deliver',
-      icon: '✓',
-      color: '#4CAF50',
-      onClick: (row) => handleMarkDelivered(row._id),
+      key: 'actions',
+      label: 'Actions',
+      width: '180px',
+      render: (value, row) => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {row.orderStatus === 'Assigned to Rider' && (
+            <button
+              onClick={() => handleMarkHandover(row._id)}
+              style={{
+                backgroundColor: '#00BCD4',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+              }}
+            >
+              🤝 Accept Handover
+            </button>
+          )}
+          {row.orderStatus === 'Handover to Rider' && (
+            <button
+              onClick={() => handleMarkDelivered(row._id)}
+              style={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+              }}
+            >
+              ✓ Yes, Delivered
+            </button>
+          )}
+        </div>
+      ),
     },
   ];
+
+  const actions = [];
 
   const pendingDeliveries = deliveries.filter(
     (d) => d.orderStatus !== 'Delivered'
@@ -156,6 +226,18 @@ const RiderDeliveries = () => {
           emptyMessage="No deliveries assigned"
         />
       </div>
+
+      {/* Accept Handover Modal */}
+      <ConfirmModal
+        isOpen={handoverModal}
+        title="Accept Handover?"
+        message="Have you received this order from the branch/staff? Confirming will change the status to Handover to Rider."
+        confirmText="Yes, Received"
+        cancelText="Cancel"
+        onConfirm={handleConfirmHandover}
+        onCancel={() => setHandoverModal(false)}
+        isLoading={completing}
+      />
 
       {/* Complete Delivery Modal */}
       <ConfirmModal
