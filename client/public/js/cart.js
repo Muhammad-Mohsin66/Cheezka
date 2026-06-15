@@ -2,7 +2,43 @@
   "use strict";
 
   var CART_KEY = "cheezka_cart";
-  var API_BASE = "http://localhost:8000/api";
+  var API_BASE = "http://localhost:5001/api";
+  var bankAccounts = [];
+
+  function fetchBankAccounts() {
+    fetch(API_BASE + "/bank-accounts")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          bankAccounts = data.data;
+          renderBankAccounts();
+        }
+      })
+      .catch(err => console.error("Failed to load bank accounts:", err));
+  }
+
+  function renderBankAccounts() {
+    var container = document.getElementById("cart-bank-accounts");
+    if (!container) return;
+    
+    if (bankAccounts.length === 0) {
+      container.innerHTML = '<div style="font-size: 11px; color: #dc2626;">No bank accounts configured.</div>';
+      return;
+    }
+
+    container.innerHTML = bankAccounts.map(bank => {
+      return `
+        <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; font-size: 11px; color: #334155;">
+          <div style="font-weight: bold; color: #0f172a; margin-bottom: 2px;">${escapeHtml(bank.bankName)}</div>
+          <div style="display: grid; grid-template-columns: 50px 1fr; gap: 2px;">
+            <span style="color: #64748b;">Title:</span> <span style="font-weight: 600;">${escapeHtml(bank.accountTitle)}</span>
+            <span style="color: #64748b;">Acc:</span> <span style="font-weight: 600; font-family: monospace;">${escapeHtml(bank.accountNumber)}</span>
+            ${bank.iban ? `<span style="color: #64748b;">IBAN:</span> <span style="font-weight: 600; font-family: monospace;">${escapeHtml(bank.iban)}</span>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 
   function parsePrice(raw) {
     var cleaned = (raw || "").replace(/[^0-9]/g, "");
@@ -244,23 +280,53 @@
 
     var total = cart.reduce(function (acc, item) { return acc + item.qty * item.price; }, 0);
 
+    // Online Payment validation
+    var transactionId = "";
+    var screenshotFile = null;
+    if (paymentMethod === "Online Payment") {
+      transactionId = (document.getElementById("transaction-id") || {}).value || "";
+      var fileInput = document.getElementById("payment-screenshot");
+      screenshotFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+      if (!transactionId.trim() || !screenshotFile) {
+        showStatus("Transaction ID and Screenshot are required for Online Payment.", true);
+        return;
+      }
+    }
+
     var placeBtn = document.getElementById("place-order-btn");
     if (placeBtn) {
       placeBtn.disabled = true;
       placeBtn.textContent = "Placing...";
     }
 
-    fetch(API_BASE + "/orders/create", {
+    // Map the items to what the Node backend expects
+    var orderItems = cart.map(function(item) {
+      return {
+        name: item.name,
+        size: item.size,
+        price: item.price,
+        quantity: item.qty
+      };
+    });
+
+    var mappedPaymentMethod = paymentMethod === 'Online Payment' ? 'Online' : 'COD';
+
+    // The Node.js API requires Authorization header
+    var headers = { "Content-Type": "application/json" };
+    if (user.token) {
+      headers["Authorization"] = "Bearer " + user.token;
+    }
+
+    fetch(API_BASE + "/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
-        customer_name: name.trim(),
-        customer_phone: phone.trim(),
-        customer_address: address.trim(),
-        payment_method: paymentMethod,
+        shippingAddress: address.trim(),
+        phoneNumber: phone.trim(),
+        paymentMethod: mappedPaymentMethod,
         notes: notes.trim(),
-        items: cart,
-        total: total
+        orderItems: orderItems
       })
     })
       .then(function (response) {
@@ -272,6 +338,41 @@
         return response.json();
       })
       .then(function (savedOrder) {
+        if (!savedOrder.success) {
+          throw new Error(savedOrder.message || "Failed to place order");
+        }
+
+        var orderId = savedOrder.data._id;
+
+        // If online payment, upload the screenshot
+        if (mappedPaymentMethod === 'Online' && screenshotFile) {
+          showStatus("Order created. Uploading receipt...", false);
+          var formData = new FormData();
+          formData.append("order", orderId);
+          formData.append("transactionId", transactionId.trim());
+          formData.append("screenshot", screenshotFile);
+
+          // Need auth header without Content-Type so browser sets boundary
+          var uploadHeaders = {};
+          if (user.token) uploadHeaders["Authorization"] = "Bearer " + user.token;
+
+          return fetch(API_BASE + "/payments", {
+            method: "POST",
+            headers: uploadHeaders,
+            body: formData
+          }).then(function(uploadRes) {
+            if (!uploadRes.ok) {
+              return uploadRes.json().then(function(err) {
+                throw new Error("Order placed, but receipt upload failed: " + (err.message || err.detail));
+              });
+            }
+            return savedOrder;
+          });
+        }
+
+        return savedOrder;
+      })
+      .then(function (finalOrder) {
         localStorage.removeItem(CART_KEY);
         localStorage.removeItem("cheezka_checkout_form");
 
@@ -279,9 +380,18 @@
         (document.getElementById("customer-phone") || {}).value = "";
         (document.getElementById("customer-address") || {}).value = "";
         (document.getElementById("order-notes") || {}).value = "";
+        (document.getElementById("transaction-id") || {}).value = "";
+        if (document.getElementById("payment-screenshot")) {
+          document.getElementById("payment-screenshot").value = "";
+        }
 
-        showStatus("Order placed successfully. Order ID: " + savedOrder.order_id, false);
+        showStatus("Order placed successfully! ID: " + finalOrder.data._id.slice(-8).toUpperCase(), false);
         renderCart();
+        
+        // Redirect to tracking page after 2 seconds
+        setTimeout(function() {
+          window.location.href = "/orders/" + finalOrder.data._id + "/track";
+        }, 2000);
       })
       .catch(function (err) {
         showStatus("Order failed: " + err.message, true);
@@ -327,6 +437,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    fetchBankAccounts();
     enhanceMenuCards();
     enhanceListRows();
     renderCart();
@@ -376,6 +487,12 @@
 
         input.addEventListener("change", function () {
           saveCheckoutFormToStorage();
+          if (inputId === "payment-method") {
+            var detailsDiv = document.getElementById("online-payment-details");
+            if (detailsDiv) {
+              detailsDiv.style.display = input.value === "Online Payment" ? "block" : "none";
+            }
+          }
         });
         input.addEventListener("input", function () {
           saveCheckoutFormToStorage();
@@ -384,6 +501,13 @@
     });
 
     restoreCheckoutFormFromStorage();
+    
+    // Initial toggle state for payment details
+    var payMethodInput = document.getElementById("payment-method");
+    var detailsDiv = document.getElementById("online-payment-details");
+    if (payMethodInput && detailsDiv) {
+      detailsDiv.style.display = payMethodInput.value === "Online Payment" ? "block" : "none";
+    }
 
     var query = new URLSearchParams(window.location.search);
     if (query.get("cart") === "1" || query.get("checkout") === "1") {

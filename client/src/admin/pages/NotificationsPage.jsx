@@ -22,13 +22,21 @@ export default function NotificationsPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/notifications');
-      setNotifications(res.data?.data || []);
+      const res = await api.get('/notifications?limit=200');
+      setNotifications(res.data?.data?.notifications || res.data?.data || []);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const markRead = async () => {
+      try {
+        await api.put('/notifications/mark-all-read');
+      } catch { /* silently fail */ }
+    };
+    markRead();
+    fetchData();
+  }, [fetchData]);
 
   const filtered = notifications.filter((n) =>
     n.title?.toLowerCase().includes(search.toLowerCase()) ||

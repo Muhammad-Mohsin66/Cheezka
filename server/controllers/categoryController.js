@@ -1,6 +1,7 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * Create a new category (Admin only)
@@ -27,6 +28,9 @@ exports.createCategory = async (req, res, next) => {
       description: description ? description.trim() : ''
     });
 
+    // Create Audit Log
+    await createAuditEntry(req, 'create', 'Category', category._id, category.name);
+
     res.status(201).json({
       success: true,
       message: 'Category created successfully',
@@ -47,7 +51,12 @@ exports.createCategory = async (req, res, next) => {
  */
 exports.getAllCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort({ name: 1 });
+    const { all } = req.query;
+    const filter = {};
+    if (all !== 'true') {
+      filter.isActive = true;
+    }
+    const categories = await Category.find(filter).sort({ name: 1 });
 
     res.status(200).json({
       success: true,
@@ -128,6 +137,9 @@ exports.updateCategory = async (req, res, next) => {
 
     await category.save();
 
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'Category', category._id, category.name);
+
     res.status(200).json({
       success: true,
       message: 'Category updated successfully',
@@ -172,6 +184,9 @@ exports.deleteCategory = async (req, res, next) => {
 
     category.isActive = false;
     await category.save();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'delete', 'Category', category._id, category.name);
 
     res.status(200).json({
       success: true,

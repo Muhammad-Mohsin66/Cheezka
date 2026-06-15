@@ -14,7 +14,7 @@ const notificationService = {
       const response = await api.get('/notifications', {
         params: { page, limit },
       });
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching notifications:', error);
       throw error;

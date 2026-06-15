@@ -1,6 +1,7 @@
 const Deal = require('../models/Deal');
 const Product = require('../models/Product');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * GET /api/deals
@@ -93,6 +94,9 @@ exports.createDeal = async (req, res, next) => {
 
     await deal.populate('products', 'name basePrice image');
 
+    // Create Audit Log
+    await createAuditEntry(req, 'create', 'Deal', deal._id, deal.title);
+
     res.status(201).json({
       success: true,
       message: 'Deal created successfully',
@@ -134,6 +138,9 @@ exports.updateDeal = async (req, res, next) => {
     await deal.save();
     await deal.populate('products', 'name basePrice image');
 
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'Deal', deal._id, deal.title);
+
     res.status(200).json({ success: true, message: 'Deal updated successfully', data: deal });
   } catch (error) {
     next(error);
@@ -151,6 +158,9 @@ exports.toggleDeal = async (req, res, next) => {
 
     deal.isActive = !deal.isActive;
     await deal.save();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'Deal', deal._id, deal.title);
 
     res.status(200).json({
       success: true,
@@ -171,7 +181,12 @@ exports.deleteDeal = async (req, res, next) => {
     const deal = await Deal.findById(req.params.id);
     if (!deal) return next(new AppError('Deal not found', 404));
 
+    const dealTitle = deal.title;
+    const dealId = deal._id;
     await deal.deleteOne();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'delete', 'Deal', dealId, dealTitle);
 
     res.status(200).json({ success: true, message: 'Deal deleted successfully' });
   } catch (error) {

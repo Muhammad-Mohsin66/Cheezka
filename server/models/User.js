@@ -33,8 +33,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'employee', 'rider', 'customer'],
-      default: 'customer',
+      enum: ['admin'],
+      default: 'admin',
       required: true,
     },
     isEmailVerified: {

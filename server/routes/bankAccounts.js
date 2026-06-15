@@ -17,6 +17,9 @@ router.get('/:accountId/details', bankAccountController.getBankAccountDetails);
  * ADMIN ROUTES (Protected)
  */
 
+// Get all bank accounts including inactive (admin only)
+router.get('/admin', protect, authorizeRoles('admin'), bankAccountController.getAdminBankAccounts);
+
 // Create bank account (admin only)
 router.post('/', protect, authorizeRoles('admin'), bankAccountController.createBankAccount);
 

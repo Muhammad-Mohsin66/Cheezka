@@ -24,14 +24,36 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       const [pRes, cRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/categories'),
+        api.get('/products?all=true'),
+        api.get('/categories?all=true'),
       ]);
       setProducts(pRes.data?.data || []);
       setCategories(cRes.data?.data || []);
     } catch { setError('Failed to load products'); }
     finally { setLoading(false); }
   }, []);
+
+  const handleAddSizeField = () => {
+    setForm((f) => ({
+      ...f,
+      sizes: [...f.sizes, { size: 'M', price: '' }]
+    }));
+  };
+
+  const handleRemoveSizeField = (index) => {
+    setForm((f) => ({
+      ...f,
+      sizes: f.sizes.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSizeFieldChange = (index, key, value) => {
+    setForm((f) => {
+      const updated = [...f.sizes];
+      updated[index] = { ...updated[index], [key]: value };
+      return { ...f, sizes: updated };
+    });
+  };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -62,6 +84,11 @@ export default function ProductsPage() {
     if (!form.name || !form.basePrice || !form.category) {
       setError('Name, category, and base price are required'); return;
     }
+    const validSizes = form.sizes.filter((s) => s.price).map((s) => ({ size: s.size, price: Number(s.price) }));
+    if (validSizes.length === 0) {
+      setError('At least one size variant with a valid price is required');
+      return;
+    }
     try {
       setSaving(true); setError('');
       const payload = {
@@ -70,7 +97,7 @@ export default function ProductsPage() {
         stockQuantity: Number(form.stockQuantity),
         lowStockThreshold: Number(form.lowStockThreshold),
         image: form.image, isActive: form.isActive,
-        sizes: form.sizes.filter((s) => s.price).map((s) => ({ size: s.size, price: Number(s.price) })),
+        sizes: validSizes,
       };
       if (modal === 'create') {
         await api.post('/products', payload);
@@ -160,12 +187,85 @@ export default function ProductsPage() {
         </FormField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FormField label="Base Price (Rs.) *">
-            <Input type="number" value={form.basePrice} onChange={(v) => setForm((f) => ({ ...f, basePrice: v }))} placeholder="0" />
+            <Input type="number" value={form.basePrice} onChange={(v) => {
+              setForm((f) => {
+                const oldBase = f.basePrice;
+                const newSizes = f.sizes.map(s => {
+                  if (String(s.price) === String(oldBase) || !s.price) {
+                    return { ...s, price: v };
+                  }
+                  return s;
+                });
+                return { ...f, basePrice: v, sizes: newSizes };
+              });
+            }} placeholder="0" />
           </FormField>
           <FormField label="Stock Quantity">
             <Input type="number" value={form.stockQuantity} onChange={(v) => setForm((f) => ({ ...f, stockQuantity: v }))} placeholder="0" />
           </FormField>
         </div>
+
+        {/* Sizes Configuration UI */}
+        <div style={{ marginTop: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>Variant Sizes & Prices *</label>
+            <Btn variant="secondary" size="xs" onClick={handleAddSizeField}>＋ Add Size</Btn>
+          </div>
+          {form.sizes.map((s, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+              <select
+                value={s.size}
+                onChange={(e) => handleSizeFieldChange(idx, 'size', e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  outline: 'none',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                <option value="S">Small (S)</option>
+                <option value="M">Medium (M)</option>
+                <option value="L">Large (L)</option>
+                <option value="XL">Extra Large (XL)</option>
+              </select>
+              <input
+                type="number"
+                value={s.price}
+                onChange={(e) => handleSizeFieldChange(idx, 'price', e.target.value)}
+                placeholder="Price (Rs.)"
+                style={{
+                  flex: 2,
+                  padding: '8px 10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  outline: 'none',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              />
+              {form.sizes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSizeField(idx)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#dc2626',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    padding: 4
+                  }}
+                >
+                  🗑️
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
         <FormField label="Description">
           <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             placeholder="Describe the product…"

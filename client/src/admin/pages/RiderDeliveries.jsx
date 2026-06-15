@@ -123,10 +123,10 @@ const RiderDeliveries = () => {
       render: (value, row) => row.customer?.phone || 'N/A',
     },
     {
-      key: 'total',
+      key: 'grandTotal',
       label: 'Total',
       width: '100px',
-      render: (value) => `$${value?.toFixed(2) || '0.00'}`,
+      render: (value) => `Rs. ${value || 0}`,
     },
     {
       key: 'orderStatus',
@@ -157,7 +157,7 @@ const RiderDeliveries = () => {
               🤝 Accept Handover
             </button>
           )}
-          {row.orderStatus === 'Handover to Rider' && (
+          {(row.orderStatus === 'Handover to Rider' || row.orderStatus === 'Assigned to Rider') && (
             <button
               onClick={() => handleMarkDelivered(row._id)}
               style={{

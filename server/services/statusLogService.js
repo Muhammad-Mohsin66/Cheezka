@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const OrderStatusLog = require('../models/OrderStatusLog');
 const PaymentLog = require('../models/PaymentLog');
 const RefundLog = require('../models/RefundLog');
@@ -12,11 +13,26 @@ class StatusLogService {
    */
   static async logOrderStatusChange(orderId, previousStatus, newStatus, changedBy, reason = null, notes = null) {
     try {
+      let changedByModel = 'User';
+      if (changedBy) {
+        const isEmployee = await mongoose.model('Employee').exists({ _id: changedBy });
+        if (isEmployee) changedByModel = 'Employee';
+        else {
+          const isRider = await mongoose.model('Rider').exists({ _id: changedBy });
+          if (isRider) changedByModel = 'Rider';
+          else {
+            const isCustomer = await mongoose.model('Customer').exists({ _id: changedBy });
+            if (isCustomer) changedByModel = 'Customer';
+          }
+        }
+      }
+
       const log = await OrderStatusLog.create({
         order: orderId,
         previousStatus,
         newStatus,
         changedBy,
+        changedByModel,
         reason,
         notes,
       });
@@ -32,10 +48,25 @@ class StatusLogService {
    */
   static async logPaymentAction(paymentId, action, performedBy, note = null, previousStatus = null, newStatus = null) {
     try {
+      let performedByModel = 'User';
+      if (performedBy) {
+        const isEmployee = await mongoose.model('Employee').exists({ _id: performedBy });
+        if (isEmployee) performedByModel = 'Employee';
+        else {
+          const isRider = await mongoose.model('Rider').exists({ _id: performedBy });
+          if (isRider) performedByModel = 'Rider';
+          else {
+            const isCustomer = await mongoose.model('Customer').exists({ _id: performedBy });
+            if (isCustomer) performedByModel = 'Customer';
+          }
+        }
+      }
+
       const log = await PaymentLog.create({
         payment: paymentId,
         action,
         performedBy,
+        performedByModel,
         note,
         previousStatus,
         newStatus,
@@ -52,10 +83,25 @@ class StatusLogService {
    */
   static async logRefundAction(refundId, action, performedBy, amount = null, note = null, previousStatus = null, newStatus = null) {
     try {
+      let performedByModel = 'User';
+      if (performedBy) {
+        const isEmployee = await mongoose.model('Employee').exists({ _id: performedBy });
+        if (isEmployee) performedByModel = 'Employee';
+        else {
+          const isRider = await mongoose.model('Rider').exists({ _id: performedBy });
+          if (isRider) performedByModel = 'Rider';
+          else {
+            const isCustomer = await mongoose.model('Customer').exists({ _id: performedBy });
+            if (isCustomer) performedByModel = 'Customer';
+          }
+        }
+      }
+
       const log = await RefundLog.create({
         refund: refundId,
         action,
         performedBy,
+        performedByModel,
         amount,
         note,
         previousStatus,

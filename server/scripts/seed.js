@@ -1,6 +1,9 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
+const Employee = require('../models/Employee');
+const Rider = require('../models/Rider');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const Deal = require('../models/Deal');
@@ -26,6 +29,9 @@ const seedDatabase = async () => {
     console.log('Clearing existing data...');
     await Promise.all([
       User.deleteMany({}),
+      Customer.deleteMany({}),
+      Employee.deleteMany({}),
+      Rider.deleteMany({}),
       Category.deleteMany({}),
       Product.deleteMany({}),
       Deal.deleteMany({}),
@@ -43,69 +49,73 @@ const seedDatabase = async () => {
 
     // 1. Seed Users
     console.log('Seeding Users...');
-    const users = await User.create([
-      {
-        name: 'Cheezka Admin',
-        email: 'admin@cheezka.com',
-        phone: '03032793109',
-        password: 'admin123',
-        role: 'admin',
-        isEmailVerified: true,
-        isActive: true,
-      },
-      {
-        name: 'Cheezka Employee',
-        email: 'employee@cheezka.com',
-        phone: '03032444109',
-        password: 'employee123',
-        role: 'employee',
-        isEmailVerified: true,
-        isActive: true,
-      },
-      {
-        name: 'Rider John',
-        email: 'rider1@cheezka.com',
-        phone: '03112223334',
-        password: 'rider123',
-        role: 'rider',
-        isEmailVerified: true,
-        isActive: true,
-      },
-      {
-        name: 'Rider Smith',
-        email: 'rider2@cheezka.com',
-        phone: '03445556667',
-        password: 'rider123',
-        role: 'rider',
-        isEmailVerified: true,
-        isActive: true,
-      },
-      {
-        name: 'Customer Alice',
-        email: 'customer1@cheezka.com',
-        phone: '03778889990',
-        password: 'customer123',
-        role: 'customer',
-        isEmailVerified: true,
-        isActive: true,
-      },
-      {
-        name: 'Customer Bob',
-        email: 'customer2@cheezka.com',
-        phone: '03112233445',
-        password: 'customer123',
-        role: 'customer',
-        isEmailVerified: true,
-        isActive: true,
-      },
-    ]);
+    const adminUser = await User.create({
+      name: 'Cheezka Admin',
+      email: 'admin@cheezka.com',
+      phone: '03032793109',
+      password: 'admin123',
+      role: 'admin',
+      isEmailVerified: true,
+      isActive: true,
+    });
 
-    const admin = users[0];
-    const employee = users[1];
-    const rider1 = users[2];
-    const rider2 = users[3];
-    const customer1 = users[4];
-    const customer2 = users[5];
+    const employeeUser = await Employee.create({
+      name: 'Cheezka Employee',
+      email: 'employee@cheezka.com',
+      phone: '03032444109',
+      password: 'employee123',
+      role: 'employee',
+      isEmailVerified: true,
+      isActive: true,
+    });
+
+    const riderJohn = await Rider.create({
+      name: 'Rider John',
+      email: 'rider1@cheezka.com',
+      phone: '03112223334',
+      password: 'rider123',
+      role: 'rider',
+      isEmailVerified: true,
+      isActive: true,
+    });
+
+    const riderSmith = await Rider.create({
+      name: 'Rider Smith',
+      email: 'rider2@cheezka.com',
+      phone: '03445556667',
+      password: 'rider123',
+      role: 'rider',
+      isEmailVerified: true,
+      isActive: true,
+    });
+
+    const customerAlice = await Customer.create({
+      name: 'Customer Alice',
+      email: 'customer1@cheezka.com',
+      phone: '03778889990',
+      password: 'customer123',
+      role: 'customer',
+      isEmailVerified: true,
+      isActive: true,
+    });
+
+    const customerBob = await Customer.create({
+      name: 'Customer Bob',
+      email: 'customer2@cheezka.com',
+      phone: '03112233445',
+      password: 'customer123',
+      role: 'customer',
+      isEmailVerified: true,
+      isActive: true,
+    });
+
+    const admin = adminUser;
+    const employee = employeeUser;
+    const rider1 = riderJohn;
+    const rider2 = riderSmith;
+    const customer1 = customerAlice;
+    const customer2 = customerBob;
+    const users = [admin, employee, rider1, rider2, customer1, customer2];
 
     // 2. Seed Categories
     console.log('Seeding Categories...');

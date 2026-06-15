@@ -4,70 +4,7 @@ import { convertLegacyHref, isLegacyInternalHref } from '../utils/routes';
 import { useAuth } from '../../shared/context/AuthContext';
 
 export function useGlobalStyles() {
-  useEffect(() => {
-    const cssFiles = [
-      '/css/bootstrap.css',
-      '/css/style.css',
-      '/css/main.css',
-      '/css/extracted-inline.css',
-      '/css/index-inline-01.css',
-      '/css/index-inline-02.css',
-      '/css/index-inline-03.css',
-      '/css/index-inline-04.css',
-      '/css/index-inline-05.css',
-      '/css/index-inline-06.css',
-      '/css/index-inline-07.css',
-      '/css/index-inline-08.css',
-      '/css/index-inline-09.css',
-      '/css/index-inline-10.css',
-      '/css/index-inline-11.css',
-      '/css/index-inline-12.css',
-      '/css/index-inline-13.css',
-      '/css/shop-inline.css',
-      '/css/about-inline.css',
-      '/css/contact-inline.css',
-      '/css/pages-inline.css',
-      '/css/login-inline.css',
-      '/css/signup-inline.css',
-      '/css/dashboard-inline.css',
-      '/css/orders-inline.css',
-    ];
-    const links = cssFiles.map((href) => {
-      const existing = document.querySelector(`link[data-app-css="${href}"]`);
-      if (existing) return existing;
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      link.setAttribute('data-app-css', href);
-      document.head.appendChild(link);
-      return link;
-    });
-
-    const fontHref = 'https://fonts.googleapis.com/css?family=Lato|Nunito+Sans:300,400,700,800,900&subset=latin,latin-ext';
-    let fontLink = document.querySelector('link[data-app-fonts="cheezka"]');
-    if (!fontLink) {
-      fontLink = document.createElement('link');
-      fontLink.rel = 'stylesheet';
-      fontLink.href = fontHref;
-      fontLink.setAttribute('data-app-fonts', 'cheezka');
-      document.head.appendChild(fontLink);
-    }
-
-    const fontAwesomeHref = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
-    let fontAwesome = document.querySelector('link[data-app-css="fa"]');
-    if (!fontAwesome) {
-      fontAwesome = document.createElement('link');
-      fontAwesome.rel = 'stylesheet';
-      fontAwesome.setAttribute('data-app-css', 'fa');
-      document.head.appendChild(fontAwesome);
-    }
-    fontAwesome.href = fontAwesomeHref;
-
-    return () => {
-      if (fontAwesome && fontAwesome.parentNode) fontAwesome.parentNode.removeChild(fontAwesome);
-      links.forEach(() => {});
-    };
-  }, []);
+  // Stylesheets are loaded statically in client/index.html to prevent FOUC
 }
 
 export function useBodyClass(className) {
@@ -171,8 +108,8 @@ export function useNavLabelNormalization(enabled = true) {
     const desired = [
       { text: 'HOME', href: '/' },
       { text: 'MENU', href: '/shop' },
-      { text: 'CHECKOUT', href: '/checkout' },
       { text: 'ORDERS', href: '/orders' },
+      { text: 'TRACK ORDER', href: '/orders' },
     ];
 
     const navItems = Array.from(menu.querySelectorAll(':scope > li')).filter((li) => {
@@ -187,6 +124,17 @@ export function useNavLabelNormalization(enabled = true) {
       if (!anchor) continue;
       anchor.textContent = desired[i].text;
       anchor.setAttribute('href', desired[i].href);
+
+      // Dynamically highlight active menu items
+      const isHomeActive = desired[i].href === '/' && location.pathname === '/';
+      const isOtherActive = desired[i].href !== '/' && location.pathname.startsWith(desired[i].href);
+      if (isHomeActive || isOtherActive) {
+        anchor.classList.add('ck-nav-active');
+        navItems[i].classList.add('current-menu-item');
+      } else {
+        anchor.classList.remove('ck-nav-active');
+        navItems[i].classList.remove('current-menu-item');
+      }
     }
 
     if (navItems.length > desired.length) {
@@ -233,6 +181,8 @@ export function useNavbarProfile(enabled = true) {
         : `<div class="profile-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background-color: #FF6B35; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 8px;">${initials}</div>`;
 
       loginItem.innerHTML =
+        `<div style="display: flex; align-items: center; gap: 16px; position: relative;">` +
+        `<div id="navbar-bell-container"></div>` +
         `<div style="position: relative; display: inline-block;">` +
         `<button id="profile-btn" class="profile-btn ck-nav-cta" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
         avatarHtml +
@@ -246,6 +196,7 @@ export function useNavbarProfile(enabled = true) {
         `<a href="/dashboard"><i class="fa fa-user ck-mr-6"></i>My Profile</a>` +
         `<a href="/orders"><i class="fa fa-shopping-bag ck-mr-6"></i>My Orders</a>` +
         `<button id="logout-btn"><i class="fa fa-sign-out-alt ck-mr-6"></i>Logout</button>` +
+        `</div>` +
         `</div>` +
         `</div>`;
 

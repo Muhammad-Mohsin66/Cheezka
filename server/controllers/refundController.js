@@ -2,7 +2,9 @@ const Refund = require('../models/Refund');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
 const notificationService = require('../services/notificationService');
+const StatusLogService = require('../services/statusLogService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -93,6 +95,17 @@ exports.requestRefund = async (req, res) => {
     reason: reason.trim(),
     status: 'Requested',
   });
+
+  // Log refund request action
+  await StatusLogService.logRefundAction(
+    refund._id,
+    'requested',
+    req.user.id,
+    refund.amount,
+    reason.trim(),
+    null,
+    'Requested'
+  );
 
   // Notify Admin about refund request
   const admins = await User.find({ role: 'admin' }).select('_id email name');
@@ -254,18 +267,41 @@ exports.approveRefund = async (req, res) => {
   }
 
   // Update refund status to Approved
+  const previousRefundStatus = refund.status;
   refund.status = 'Approved';
   if (adminNote) {
     refund.adminNote = adminNote.trim();
   }
   await refund.save();
 
+  // Log refund action
+  await StatusLogService.logRefundAction(
+    refund._id,
+    'approved',
+    req.user.id,
+    refund.amount,
+    adminNote || 'Refund approved by admin',
+    previousRefundStatus,
+    'Approved'
+  );
+
   // Update order status to "Refund Requested"
+  const oldOrderStatus = order.orderStatus;
   order.orderStatus = 'Refund Requested';
   await order.save();
 
+  // Log order status change
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    oldOrderStatus,
+    'Refund Requested',
+    req.user.id,
+    'Refund Approved',
+    adminNote
+  );
+
   // Notify customer of refund approval
-  const customer = await User.findById(refund.user);
+  const customer = await Customer.findById(refund.user);
   if (customer) {
     await notificationService.createNotification(
       refund.user,
@@ -317,12 +353,24 @@ exports.rejectRefund = async (req, res) => {
   }
 
   // Update refund status to Rejected with reason
+  const previousRefundStatus = refund.status;
   refund.status = 'Rejected';
   refund.adminNote = adminNote.trim();
   await refund.save();
 
+  // Log refund action
+  await StatusLogService.logRefundAction(
+    refund._id,
+    'rejected',
+    req.user.id,
+    refund.amount,
+    adminNote.trim(),
+    previousRefundStatus,
+    'Rejected'
+  );
+
   // Notify customer of refund rejection
-  const customer = await User.findById(refund.user);
+  const customer = await Customer.findById(refund.user);
   if (customer) {
     await notificationService.createNotification(
       refund.user,
@@ -377,6 +425,7 @@ exports.markAsProcessed = async (req, res) => {
   }
 
   // Update refund status to Processed
+  const previousRefundStatus = refund.status;
   refund.status = 'Processed';
   refund.processedBy = req.user.id;
   refund.processedAt = new Date();
@@ -385,12 +434,46 @@ exports.markAsProcessed = async (req, res) => {
   }
   await refund.save();
 
+  // Log refund action
+  await StatusLogService.logRefundAction(
+    refund._id,
+    'processed',
+    req.user.id,
+    refund.amount,
+    adminNote || 'Refund processed',
+    previousRefundStatus,
+    'Processed'
+  );
+
   // Update order status to "Refunded"
+  const oldOrderStatus = order.orderStatus;
   order.orderStatus = 'Refunded';
   await order.save();
 
+  // Log order status change
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    oldOrderStatus,
+    'Refunded',
+    req.user.id,
+    'Refund Processed',
+    adminNote
+  );
+
+  // Log payment log update (Manual payments JazzCash/EasyPaisa/Online transfer)
+  if (refund.payment) {
+    await StatusLogService.logPaymentAction(
+      refund.payment,
+      'refunded',
+      req.user.id,
+      adminNote || 'Payment refunded',
+      'Verified',
+      'Verified'
+    );
+  }
+
   // Notify customer of refund processing
-  const customer = await User.findById(refund.user);
+  const customer = await Customer.findById(refund.user);
   if (customer) {
     await notificationService.createNotification(
       refund.user,

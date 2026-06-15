@@ -1,7 +1,9 @@
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
 const notificationService = require('../services/notificationService');
+const StatusLogService = require('../services/statusLogService');
 const AppError = require('../utils/AppError');
 const path = require('path');
 
@@ -80,6 +82,16 @@ exports.uploadPaymentScreenshot = async (req, res) => {
     amount,
     status: 'Pending',
   });
+
+  // Log payment upload action
+  await StatusLogService.logPaymentAction(
+    payment._id,
+    'uploaded',
+    req.user.id,
+    `Payment screenshot uploaded for order #${orderId}`,
+    null,
+    'Pending'
+  );
 
   // Notify Admin about payment upload
   const admins = await User.find({ role: 'admin' }).select('_id email name');
@@ -170,7 +182,7 @@ exports.getAllPayments = async (req, res) => {
  */
 exports.verifyPayment = async (req, res) => {
   const { paymentId } = req.params;
-  const { adminNote = '' } = req.body;
+  const { adminNote = '' } = req.body || {};
 
   // Fetch payment
   const payment = await Payment.findById(paymentId);
@@ -192,6 +204,16 @@ exports.verifyPayment = async (req, res) => {
   }
   await payment.save();
 
+  // Log payment verification action
+  await StatusLogService.logPaymentAction(
+    payment._id,
+    'verified',
+    req.user.id,
+    adminNote || 'Payment verified by staff',
+    'Pending',
+    'Verified'
+  );
+
   // Update order payment status
   const order = await Order.findById(payment.order);
   if (order) {
@@ -200,7 +222,7 @@ exports.verifyPayment = async (req, res) => {
   }
 
   // Notify customer of payment verification
-  const customer = await User.findById(payment.user);
+  const customer = await Customer.findById(payment.user);
   if (customer) {
     await notificationService.createNotification(
       payment.user,
@@ -256,8 +278,18 @@ exports.rejectPayment = async (req, res) => {
   payment.adminNote = rejectionReason;
   await payment.save();
 
+  // Log payment rejection action
+  await StatusLogService.logPaymentAction(
+    payment._id,
+    'rejected',
+    req.user.id,
+    rejectionReason,
+    'Pending',
+    'Rejected'
+  );
+
   // Notify customer of payment rejection
-  const customer = await User.findById(payment.user);
+  const customer = await Customer.findById(payment.user);
   if (customer) {
     await notificationService.createNotification(
       payment.user,

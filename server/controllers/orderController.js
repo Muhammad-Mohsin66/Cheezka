@@ -2,8 +2,17 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
+const Rider = require('../models/Rider');
+const Employee = require('../models/Employee');
+const OrderStatusLog = require('../models/OrderStatusLog');
+const Refund = require('../models/Refund');
+const InventoryLog = require('../models/InventoryLog');
+const SystemSetting = require('../models/SystemSetting');
 const inventoryService = require('../services/inventoryService');
 const notificationService = require('../services/notificationService');
+const StatusLogService = require('../services/statusLogService');
+const { createAuditEntry } = require('./auditLogController');
 const AppError = require('../utils/AppError');
 
 /**
@@ -84,13 +93,37 @@ exports.placeOrder = async (req, res) => {
       quantity: item.quantity,
       price: sizeObj.price,
     });
+  }
 
-    // Deduct stock immediately
-    await inventoryService.reduceStock(product._id, item.quantity);
+  // Fetch dynamic settings
+  const settings = await SystemSetting.find({ key: { $in: ['MIN_ORDER_VALUE', 'TAX_PERCENTAGE'] } });
+  const minOrderSetting = settings.find(s => s.key === 'MIN_ORDER_VALUE');
+  const taxSetting = settings.find(s => s.key === 'TAX_PERCENTAGE');
+  
+  const minOrderValue = minOrderSetting ? Number(minOrderSetting.value) : 0;
+  const taxPercentage = taxSetting ? Number(taxSetting.value) : 0;
+
+  if (minOrderValue > 0 && totalAmount < minOrderValue) {
+    throw new AppError(`Minimum order value is Rs. ${minOrderValue}. Please add more items.`, 400);
+  }
+
+  const taxAmount = Math.round(totalAmount * (taxPercentage / 100));
+
+  // Deduct stock and collect log IDs
+  const logIds = [];
+  for (const item of preparedItems) {
+    const updatedProduct = await inventoryService.reduceStock(item.product, item.quantity, {
+      performedBy: req.user.id,
+      reason: 'order',
+      notes: `Ordered size ${item.size}`
+    });
+    if (updatedProduct && updatedProduct.lastLog) {
+      logIds.push(updatedProduct.lastLog._id);
+    }
   }
 
   // Calculate grand total
-  const grandTotal = totalAmount + deliveryCharge;
+  const grandTotal = totalAmount + deliveryCharge + taxAmount;
 
   // Create order
   const order = await Order.create({
@@ -99,12 +132,40 @@ exports.placeOrder = async (req, res) => {
     shippingAddress: shippingAddress.trim(),
     phoneNumber,
     totalAmount,
+    taxAmount,
     deliveryCharge,
     grandTotal,
     paymentMethod,
     paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Pending',
     orderStatus: 'Pending',
   });
+
+  // Link created inventory logs to the order
+  if (logIds.length > 0) {
+    await InventoryLog.updateMany(
+      { _id: { $in: logIds } },
+      { relatedOrder: order._id }
+    );
+  }
+
+  // Log order status change
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    null,
+    'Pending',
+    req.user.id,
+    'Order placed',
+    `Order placed by customer via ${paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment'}`
+  );
+
+  // Create order notification for customer
+  await notificationService.createNotification(
+    req.user.id,
+    'Order Placed Successfully',
+    `Your order #${order._id} has been placed successfully. Grand Total: Rs. ${order.grandTotal}`,
+    'order',
+    order._id
+  );
 
   // Notify Admin about new order
   const admins = await User.find({ role: 'admin' }).select('_id email name');
@@ -120,11 +181,11 @@ exports.placeOrder = async (req, res) => {
 
   // Send email notification to first admin
   if (admins.length > 0) {
-    const customerUser = await User.findById(req.user.id);
+    const customerUser = await Customer.findById(req.user.id);
     await notificationService.sendEmailNotification(
       admins[0].email,
       'New Order Placed',
-      `New order #${order._id} has been placed by ${customerUser.name}. Total Amount: ₹${order.grandTotal}`
+      `New order #${order._id} has been placed by ${customerUser.name}. Total Amount: Rs. ${order.grandTotal}`
     );
   }
 
@@ -148,12 +209,30 @@ exports.getMyOrders = async (req, res) => {
   }
 
   // Get orders
-  const orders = await Order.find(filter).sort(sortBy).lean();
+  const orders = await Order.find(filter)
+    .sort(sortBy)
+    .populate('customer', 'name phone email')
+    .populate('rider', 'name phone email')
+    .lean();
+
+  // Fetch associated refund request details if any
+  const refunds = await Refund.find({ user: req.user.id }).lean();
+  const refundsMap = refunds.reduce((map, r) => {
+    if (r.order) {
+      map[r.order.toString()] = r;
+    }
+    return map;
+  }, {});
+
+  const ordersWithRefund = orders.map(order => ({
+    ...order,
+    refund: refundsMap[order._id.toString()] || null
+  }));
 
   res.status(200).json({
     success: true,
     count: orders.length,
-    data: orders,
+    data: ordersWithRefund,
   });
 };
 
@@ -185,13 +264,51 @@ exports.cancelOrder = async (req, res) => {
 
   // Restore stock for all items
   for (const item of order.orderItems) {
-    await inventoryService.increaseStock(item.product, item.quantity);
+    await inventoryService.increaseStock(item.product, item.quantity, {
+      performedBy: req.user.id,
+      reason: 'cancel',
+      relatedOrder: order._id,
+      notes: `Order #${order._id} cancelled by customer`
+    });
   }
 
   // Update order
+  const oldStatus = order.orderStatus;
   order.orderStatus = 'Cancelled';
   order.cancellationReason = reason;
   await order.save();
+
+  // Log order status change
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    oldStatus,
+    'Cancelled',
+    req.user.id,
+    'Cancelled by Customer',
+    reason
+  );
+
+  // Create notifications
+  await notificationService.createNotification(
+    req.user.id,
+    'Order Cancelled',
+    `Your order #${order._id} has been cancelled successfully.`,
+    'order',
+    order._id
+  );
+
+  const admins = await User.find({ role: 'admin' }).select('_id email name');
+  for (const admin of admins) {
+    await notificationService.createNotification(
+      admin._id,
+      'Order Cancelled by Customer',
+      `Order #${order._id} has been cancelled by the customer. Reason: ${reason}`,
+      'order',
+      order._id
+    );
+  }
+
+  await createAuditEntry(req, 'update', 'Order', order._id, `Status: Cancelled`);
 
   res.status(200).json({
     success: true,
@@ -281,24 +398,53 @@ exports.updateOrderStatus = async (req, res) => {
     throw new AppError(`Cannot change status of ${order.orderStatus} order`, 400);
   }
 
-  // PAYMENT VERIFICATION RULE: If changing to Confirmed and payment is not COD
+  // PAYMENT VERIFICATION RULE: If progressing order status and payment is not COD
   // Then paymentStatus must be Verified
-  if (orderStatus === 'Confirmed' && order.paymentMethod !== 'COD') {
+  const progressionStatuses = ['Confirmed', 'Preparing', 'Ready', 'Assigned to Rider', 'Handover to Rider', 'Delivered'];
+  if (progressionStatuses.includes(orderStatus) && order.paymentMethod !== 'COD') {
     if (order.paymentStatus !== 'Verified') {
       throw new AppError(
-        `Cannot confirm order. Payment must be verified first. Current status: ${order.paymentStatus}`,
+        `Cannot change status to ${orderStatus}. Online payment must be verified first. Current payment status: ${order.paymentStatus}`,
         400
       );
+    }
+  }
+
+  // If changing status to Cancelled, restore stock
+  if (orderStatus === 'Cancelled' && order.orderStatus !== 'Cancelled') {
+    for (const item of order.orderItems) {
+      await inventoryService.increaseStock(item.product, item.quantity, {
+        performedBy: req.user.id,
+        reason: 'cancel',
+        relatedOrder: order._id,
+        notes: `Order status changed to Cancelled by staff/admin`
+      });
     }
   }
 
   // Update status
   const oldStatus = order.orderStatus;
   order.orderStatus = orderStatus;
+
+  // Auto-verify COD payments when delivered
+  if (orderStatus === 'Delivered' && order.paymentMethod === 'COD') {
+    order.paymentStatus = 'Verified';
+  }
+
   await order.save();
 
+  // Log order status change
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    oldStatus,
+    orderStatus,
+    req.user.id,
+    req.body.reason || `Status updated by store staff to ${orderStatus}`,
+    req.body.notes || ''
+  );
+
   // Send notifications based on status change
-  const customer = order.customer && order.customer.email ? order.customer : await User.findById(order.customer);
+  const customer = order.customer && order.customer.email ? order.customer : await Customer.findById(order.customer);
   const customerId = order.customer?._id || order.customer;
   
   // Notify customer of status updates
@@ -323,7 +469,7 @@ exports.updateOrderStatus = async (req, res) => {
 
   // If assigning to rider, also notify the rider
   if (orderStatus === 'Assigned to Rider' && req.body.riderId) {
-    const rider = await User.findById(req.body.riderId);
+  const rider = await Rider.findById(req.body.riderId);
     if (rider) {
       await notificationService.createNotification(
         rider._id,
@@ -340,6 +486,8 @@ exports.updateOrderStatus = async (req, res) => {
       );
     }
   }
+
+  await createAuditEntry(req, 'update', 'Order', order._id, `Status: ${orderStatus}`);
 
   res.status(200).json({
     success: true,
@@ -360,7 +508,7 @@ exports.assignRider = async (req, res) => {
   }
 
   // Verify rider exists and has rider role
-  const rider = await User.findById(riderId);
+  const rider = await Rider.findById(riderId);
   if (!rider) {
     throw new AppError('Rider not found', 404);
   }
@@ -380,12 +528,66 @@ exports.assignRider = async (req, res) => {
     throw new AppError('Order must be Ready before assigning a rider', 400);
   }
 
+  const oldStatus = order.orderStatus;
+
   // Assign rider
   order.rider = riderId;
   if (order.orderStatus === 'Ready') {
     order.orderStatus = 'Assigned to Rider';
   }
   await order.save();
+
+  // Log order status change if status changed
+  if (oldStatus !== order.orderStatus) {
+    await StatusLogService.logOrderStatusChange(
+      order._id,
+      oldStatus,
+      order.orderStatus,
+      req.user.id,
+      `Status updated by store staff to ${order.orderStatus}`,
+      ''
+    );
+  }
+
+  // Send notifications based on status change and assignment
+  const customer = order.customer && order.customer.email ? order.customer : await Customer.findById(order.customer);
+  const customerId = order.customer?._id || order.customer;
+
+  // Notify customer
+  if (customer) {
+    await notificationService.createNotification(
+      customerId,
+      `Order Assigned to Rider`,
+      `A rider has been assigned to your order #${order._id}. Status: ${order.orderStatus}`,
+      'order',
+      order._id
+    );
+
+    if (customer.email) {
+      await notificationService.sendEmailNotification(
+        customer.email,
+        `Order Assigned to Rider`,
+        `A rider has been assigned to your order #${order._id}. Status: ${order.orderStatus}`
+      );
+    }
+  }
+
+  // Notify rider
+  await notificationService.createNotification(
+    rider._id,
+    'Order Assigned to You',
+    `You have been assigned order #${order._id}. Total: Rs. ${order.grandTotal}`,
+    'order',
+    order._id
+  );
+
+  if (rider.email) {
+    await notificationService.sendEmailNotification(
+      rider.email,
+      'New Order Assignment',
+      `You have been assigned order #${order._id}. Please check the app for details.`
+    );
+  }
 
   res.status(200).json({
     success: true,
@@ -404,17 +606,34 @@ exports.assignRider = async (req, res) => {
 exports.getMyDeliveries = async (req, res) => {
   const { status, sortBy = '-createdAt' } = req.query;
 
-  const filter = {
-    rider: req.user.id,
-  };
-
-  if (status) {
-    filter.orderStatus = status;
+  const filter = {};
+  if (req.user.role === 'admin' || req.user.role === 'employee') {
+    // Show all deliveries that have a rider assigned OR are already delivered (e.g. manual status updates)
+    if (status) {
+      filter.$and = [
+        { $or: [{ rider: { $ne: null } }, { orderStatus: 'Delivered' }] },
+        { orderStatus: status }
+      ];
+    } else {
+      filter.$or = [
+        { rider: { $ne: null }, orderStatus: { $in: ['Assigned to Rider', 'Handover to Rider', 'Delivered'] } },
+        { orderStatus: 'Delivered' }
+      ];
+    }
   } else {
-    filter.orderStatus = { $in: ['Assigned to Rider', 'Handover to Rider'] };
+    // Show only the logged-in rider's deliveries
+    filter.rider = req.user.id;
+    if (status) {
+      filter.orderStatus = status;
+    } else {
+      filter.orderStatus = { $in: ['Assigned to Rider', 'Handover to Rider', 'Delivered'] };
+    }
   }
 
-  const orders = await Order.find(filter).sort(sortBy);
+  const orders = await Order.find(filter)
+    .populate('customer', 'name email phone')
+    .populate('rider', 'name email phone')
+    .sort(sortBy);
 
   res.status(200).json({
     success: true,
@@ -442,15 +661,18 @@ exports.updateDeliveryStatus = async (req, res) => {
     throw new AppError('Order not found', 404);
   }
 
-  // Verify rider ownership
-  if ((order.rider?._id || order.rider || '').toString() !== req.user.id) {
-    throw new AppError('You can only update your assigned deliveries', 403);
+  // Verify rider ownership (bypass for admins and employees)
+  if (req.user.role !== 'admin' && req.user.role !== 'employee') {
+    if ((order.rider?._id || order.rider || '').toString() !== req.user.id) {
+      throw new AppError('You can only update your assigned deliveries', 403);
+    }
   }
 
   // Validate status transition
+  const oldStatus = order.orderStatus;
   if (newStatus === 'Delivered') {
-    if (order.orderStatus !== 'Handover to Rider') {
-      throw new AppError('Order must be in "Handover to Rider" status to deliver', 400);
+    if (order.orderStatus !== 'Handover to Rider' && order.orderStatus !== 'Assigned to Rider') {
+      throw new AppError('Order must be in "Handover to Rider" or "Assigned to Rider" status to deliver', 400);
     }
     order.orderStatus = 'Delivered';
   } else if (newStatus === 'Handover to Rider') {
@@ -462,7 +684,47 @@ exports.updateDeliveryStatus = async (req, res) => {
     throw new AppError('Invalid status. Rider can only update to "Handover to Rider" or "Delivered"', 400);
   }
 
+  // Auto-verify COD payments when delivered
+  if (newStatus === 'Delivered' && order.paymentMethod === 'COD') {
+    order.paymentStatus = 'Verified';
+  }
+
   await order.save();
+
+  await StatusLogService.logOrderStatusChange(
+    order._id,
+    oldStatus,
+    newStatus,
+    req.user.id,
+    req.body.reason || (req.user.role === 'rider' ? `Status updated by rider to ${newStatus}` : `Status updated by staff to ${newStatus}`),
+    req.body.notes || ''
+  );
+
+  // Notify customer of delivery updates
+  const customerId = order.customer?._id || order.customer;
+  if (customerId) {
+    let title = '';
+    let message = '';
+    if (newStatus === 'Handover to Rider') {
+      title = 'Order Out for Delivery';
+      message = `Your order #${order._id} has been picked up by the rider and is on the way!`;
+    } else if (newStatus === 'Delivered') {
+      title = 'Order Delivered';
+      message = `Your order #${order._id} has been successfully delivered. Enjoy your meal!`;
+    }
+
+    if (title && message) {
+      await notificationService.createNotification(
+        customerId,
+        title,
+        message,
+        'order',
+        order._id
+      );
+    }
+  }
+
+  await createAuditEntry(req, 'update', 'Order', order._id, `Delivery Status: ${newStatus}`);
 
   res.status(200).json({
     success: true,
@@ -477,23 +739,42 @@ exports.updateDeliveryStatus = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   const { orderId } = req.params;
 
-  const order = await Order.findById(orderId);
+  const order = await Order.findById(orderId)
+    .populate('customer', 'name phone email')
+    .populate('rider', 'name phone email');
+
   if (!order) {
     throw new AppError('Order not found', 404);
   }
 
   // Verify access (customer, admin, or assigned rider)
+  const orderCustomerId = (order.customer?._id || order.customer || '').toString();
+  const orderRiderId = (order.rider?._id || order.rider || '').toString();
+
   if (
-    (order.customer?._id || order.customer || '').toString() !== req.user.id &&
+    orderCustomerId !== req.user.id &&
     req.user.role !== 'admin' &&
     req.user.role !== 'employee' &&
-    (order.rider?._id || order.rider || '').toString() !== req.user.id
+    orderRiderId !== req.user.id
   ) {
     throw new AppError('You do not have access to this order', 403);
   }
 
+  // Fetch status history logs
+  const statusHistory = await OrderStatusLog.find({ order: orderId })
+    .sort({ createdAt: -1 })
+    .populate('changedBy', 'name role')
+    .lean();
+
+  // Fetch associated refund if any
+  const refund = await Refund.findOne({ order: orderId }).lean();
+
   res.status(200).json({
     success: true,
-    data: order,
+    data: {
+      ...order.toObject(),
+      refund: refund || null
+    },
+    statusHistory,
   });
 };

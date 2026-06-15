@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../shared/services/api';
 import { useAuth } from '../../shared/context/AuthContext';
 import StatusBadge from '../../shared/components/StatusBadge';
 import ConfirmModal from '../../shared/components/ConfirmModal';
+import RefundRequestModal from '../../shared/components/RefundRequestModal';
 import OrderTimeline from '../components/OrderTimeline';
 import { useToast, ToastContainer } from '../../shared/components/Toast';
 
@@ -17,6 +19,36 @@ const CustomerOrders = () => {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+
+  // Refund states
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null);
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+
+  const handleOpenRefundModal = (order) => {
+    setSelectedOrderForRefund(order);
+    setRefundModalOpen(true);
+  };
+
+  const handleRefundSubmit = async (reason) => {
+    if (!selectedOrderForRefund) return;
+    try {
+      setRefundSubmitting(true);
+      await api.post('/refunds/request', {
+        orderId: selectedOrderForRefund._id,
+        reason,
+      });
+      showSuccess('Refund request submitted successfully!');
+      setRefundModalOpen(false);
+      setSelectedOrderForRefund(null);
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      showError(err.response?.data?.message || 'Failed to submit refund request.');
+    } finally {
+      setRefundSubmitting(false);
+    }
+  };
 
   // Fetch orders on mount
   useEffect(() => {
@@ -121,6 +153,25 @@ const CustomerOrders = () => {
                 </div>
                 <div style={styles.headerRight}>
                   <StatusBadge type="order" status={order.orderStatus} />
+                  {order.refund && (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      textTransform: 'uppercase',
+                      backgroundColor: 
+                        order.refund.status === 'Requested' ? '#fef3c7' :
+                        order.refund.status === 'Approved' ? '#ede9fe' :
+                        order.refund.status === 'Processed' ? '#dcfce7' : '#fee2e2',
+                      color: 
+                        order.refund.status === 'Requested' ? '#b45309' :
+                        order.refund.status === 'Approved' ? '#7c3aed' :
+                        order.refund.status === 'Processed' ? '#16a34a' : '#dc2626',
+                    }}>
+                      Refund {order.refund.status}
+                    </span>
+                  )}
                   <span style={styles.expandIcon}>
                     {expandedOrderId === order._id ? '▼' : '▶'}
                   </span>
@@ -137,12 +188,12 @@ const CustomerOrders = () => {
                   <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>📦 Items</h3>
                     <div style={styles.itemsList}>
-                      {order.items?.map((item, idx) => (
+                      {(order.orderItems || order.items || []).map((item, idx) => (
                         <div key={idx} style={styles.item}>
-                          <span>{item.menuItem?.name || 'Item'}</span>
+                          <span>{item.name || 'Item'} ({item.size})</span>
                           <span style={styles.itemQuantity}>x{item.quantity}</span>
                           <span style={styles.itemPrice}>
-                            ${(item.price * item.quantity).toFixed(2)}
+                            Rs. {(item.price * item.quantity).toFixed(0)}
                           </span>
                         </div>
                       ))}
@@ -155,19 +206,15 @@ const CustomerOrders = () => {
                     <div style={styles.details}>
                       <div style={styles.detailRow}>
                         <span>Subtotal:</span>
-                        <span>${order.subtotal?.toFixed(2) || '0.00'}</span>
-                      </div>
-                      <div style={styles.detailRow}>
-                        <span>Tax:</span>
-                        <span>${order.tax?.toFixed(2) || '0.00'}</span>
+                        <span>Rs. {(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
                       </div>
                       <div style={styles.detailRow}>
                         <span>Delivery Fee:</span>
-                        <span>${order.deliveryFee?.toFixed(2) || '0.00'}</span>
+                        <span>Rs. {(order.deliveryCharge || order.deliveryFee || 0).toFixed(0)}</span>
                       </div>
                       <div style={styles.detailRowHighlight}>
                         <span>Total:</span>
-                        <span>${order.total?.toFixed(2) || '0.00'}</span>
+                        <span>Rs. {(order.grandTotal || order.total || 0).toFixed(0)}</span>
                       </div>
                     </div>
                   </div>
@@ -188,15 +235,73 @@ const CustomerOrders = () => {
                   </div>
 
                   {/* Rider Info (if assigned) */}
-                  {order.assignedRider && (
+                  {order.rider && (
                     <div style={styles.section}>
                       <h3 style={styles.sectionTitle}>🚗 Delivery</h3>
                       <div style={styles.riderInfo}>
-                        <p><strong>Rider:</strong> {order.assignedRider.name}</p>
-                        <p><strong>Phone:</strong> {order.assignedRider.phone}</p>
-                        <p><strong>Vehicle:</strong> {order.assignedRider.vehicle}</p>
+                        <p><strong>Rider:</strong> {order.rider.name}</p>
+                        <p><strong>Phone:</strong> {order.rider.phone}</p>
                       </div>
                     </div>
+                  )}
+
+                  {/* Refund Rejection Reason */}
+                  {order.refund && order.refund.status === 'Rejected' && order.refund.adminNote && (
+                    <div style={{
+                      backgroundColor: '#fef2f2',
+                      border: '1px solid #fee2e2',
+                      borderLeft: '4px solid #dc2626',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      fontSize: '13px',
+                      color: '#991b1b',
+                    }}>
+                      <strong>Refund Rejection Reason:</strong> {order.refund.adminNote}
+                    </div>
+                  )}
+
+                  {/* Track Order Button */}
+                  <Link
+                    to={`/orders/${order._id}/track`}
+                    style={{
+                      ...styles.cancelButton,
+                      backgroundColor: '#FF6B35',
+                      color: 'white',
+                      borderColor: '#FF6B35',
+                      display: 'block',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      marginTop: '10px',
+                      marginBottom: '10px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    🛵 Track Real-time Order Status
+                  </Link>
+
+                  {/* Request Refund Button */}
+                  {['Delivered', 'Cancelled'].includes(order.orderStatus) &&
+                   order.paymentMethod !== 'COD' &&
+                   order.paymentStatus === 'Verified' &&
+                   !order.refund && (
+                    <button
+                      onClick={() => handleOpenRefundModal(order)}
+                      style={{
+                        ...styles.cancelButton,
+                        backgroundColor: '#ffffff',
+                        color: '#FF6B35',
+                        borderColor: '#FF6B35',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        display: 'block',
+                        textAlign: 'center',
+                        marginTop: '10px',
+                        marginBottom: '10px',
+                        fontWeight: '700'
+                      }}
+                    >
+                      ↩️ Request Refund
+                    </button>
                   )}
 
                   {/* Cancel Button */}
@@ -226,6 +331,19 @@ const CustomerOrders = () => {
         onCancel={() => setCancelModalOpen(false)}
         isLoading={cancelling}
         isDangerous={true}
+      />
+
+      {/* Refund Request Modal */}
+      <RefundRequestModal
+        isOpen={refundModalOpen}
+        orderId={selectedOrderForRefund?._id}
+        amount={selectedOrderForRefund?.total}
+        onSubmit={handleRefundSubmit}
+        onClose={() => {
+          setRefundModalOpen(false);
+          setSelectedOrderForRefund(null);
+        }}
+        isLoading={refundSubmitting}
       />
     </div>
   );

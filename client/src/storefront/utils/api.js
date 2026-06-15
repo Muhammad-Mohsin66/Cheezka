@@ -54,3 +54,46 @@ export async function createOrder(payload) {
   });
   return parseJson(response);
 }
+
+export async function getOrderDetails(orderId) {
+  const response = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}/details`, {
+    headers: getAuthHeaders(),
+  });
+  return parseJson(response);
+}
+
+export async function getCategories() {
+  const response = await fetch(`${API_BASE}/categories`, { cache: 'no-store' });
+  return parseJson(response);
+}
+
+export async function getProducts() {
+  const response = await fetch(`${API_BASE}/products`, { cache: 'no-store' });
+  return parseJson(response);
+}
+
+export async function getDeals() {
+  const response = await fetch(`${API_BASE}/deals`, { cache: 'no-store' });
+  return parseJson(response);
+}
+
+export async function getBankAccounts() {
+  const response = await fetch(`${API_BASE}/bank-accounts`, { cache: 'no-store' });
+  return parseJson(response);
+}
+
+export async function requestRefund(orderId, reason) {
+  const response = await fetch(`${API_BASE}/refunds/request`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ orderId, reason }),
+  });
+  return parseJson(response);
+}
+
+export async function getMyRefunds() {
+  const response = await fetch(`${API_BASE}/refunds/my-refunds`, {
+    headers: getAuthHeaders(),
+  });
+  return parseJson(response);
+}

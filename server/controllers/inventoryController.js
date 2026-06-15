@@ -8,8 +8,11 @@ const AppError = require('../utils/AppError');
  */
 exports.getInventory = async (req, res, next) => {
   try {
-    const { search, status, page = 1, limit = 50 } = req.query;
+    const { search, status, page = 1, limit = 50, all } = req.query;
     const filter = {};
+    if (all !== 'true') {
+      filter.isActive = true;
+    }
 
     if (search) {
       filter.$or = [
@@ -177,11 +180,14 @@ exports.getInventoryLogs = async (req, res, next) => {
  */
 exports.getInventorySummary = async (req, res, next) => {
   try {
+    const { all } = req.query;
+    const activeFilter = all === 'true' ? {} : { isActive: true };
+
     const [totalProducts, lowStock, outOfStock, inStock] = await Promise.all([
-      Product.countDocuments({ isActive: true }),
-      Product.countDocuments({ $expr: { $and: [{ $gt: ['$stockQuantity', 0] }, { $lte: ['$stockQuantity', '$lowStockThreshold'] }] }, isActive: true }),
-      Product.countDocuments({ stockQuantity: 0, isActive: true }),
-      Product.countDocuments({ $expr: { $gt: ['$stockQuantity', '$lowStockThreshold'] }, isActive: true }),
+      Product.countDocuments({ ...activeFilter }),
+      Product.countDocuments({ $expr: { $and: [{ $gt: ['$stockQuantity', 0] }, { $lte: ['$stockQuantity', '$lowStockThreshold'] }] }, ...activeFilter }),
+      Product.countDocuments({ stockQuantity: 0, ...activeFilter }),
+      Product.countDocuments({ $expr: { $gt: ['$stockQuantity', '$lowStockThreshold'] }, ...activeFilter }),
     ]);
 
     res.status(200).json({

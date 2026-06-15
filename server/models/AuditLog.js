@@ -4,9 +4,15 @@ const auditLogSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      refPath: 'userModel',
       required: [true, 'User is required'],
       index: true,
+    },
+    userModel: {
+      type: String,
+      required: true,
+      enum: ['User', 'Customer', 'Employee', 'Rider'],
+      default: 'User',
     },
     action: {
       type: String,
@@ -36,6 +42,9 @@ const auditLogSchema = new mongoose.Schema(
         'Category',
         'Report',
         'Notification',
+        'Setting',
+        'BankAccount',
+        'DeliveryZone',
       ],
       required: [true, 'Target collection is required'],
     },

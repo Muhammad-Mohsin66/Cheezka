@@ -148,7 +148,7 @@ const AdminDashboard = () => {
             <h3 style={styles.cardTitle}>Total Revenue</h3>
           </div>
           <p style={styles.cardValue}>
-            ${(dashboardData?.totalRevenue || 0).toFixed(2)}
+            Rs. {(dashboardData?.totalRevenue || 0).toFixed(0)}
           </p>
           <p style={styles.cardSubtext}>This month</p>
         </div>
@@ -174,7 +174,7 @@ const AdminDashboard = () => {
             <h3 style={styles.cardTitle}>Total Refunds</h3>
           </div>
           <p style={styles.cardValue}>
-            ${(dashboardData?.totalRefundAmount || 0).toFixed(2)}
+            Rs. {(dashboardData?.totalRefundAmount || 0).toFixed(0)}
           </p>
           <p style={styles.cardSubtext}>
             Total refunded
@@ -244,7 +244,7 @@ const AdminDashboard = () => {
                     borderRadius: '8px',
                     color: '#F5F5F0'
                   }}
-                  formatter={(value) => [`$${value.toFixed(2)}`, 'Revenue']}
+                  formatter={(value) => [`Rs. ${value.toFixed(0)}`, 'Revenue']}
                 />
                 <Legend />
                 <Line 
@@ -339,7 +339,7 @@ const AdminDashboard = () => {
                       borderRadius: '8px',
                       color: '#F5F5F0'
                     }}
-                    formatter={(value) => `$${value.toFixed(2)}`}
+                    formatter={(value) => `Rs. ${value.toFixed(0)}`}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                     ></div>
                     <span>{item.name}</span>
                     <span style={styles.legendValue}>
-                      ${item.amount.toFixed(2)}
+                      Rs. {item.amount.toFixed(0)}
                     </span>
                   </div>
                 ))}

@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const inventoryService = require('../services/inventoryService');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * Create a new product (Admin only)
@@ -65,6 +66,9 @@ exports.createProduct = async (req, res, next) => {
     // Populate category
     await product.populate('category', 'name description');
 
+    // Create Audit Log
+    await createAuditEntry(req, 'create', 'Product', product._id, product.name);
+
     res.status(201).json({
       success: true,
       message: 'Product created successfully',
@@ -82,8 +86,11 @@ exports.createProduct = async (req, res, next) => {
  */
 exports.getAllProducts = async (req, res, next) => {
   try {
-    const { category, search, sortBy } = req.query;
-    const filter = { isActive: true };
+    const { category, search, sortBy, all } = req.query;
+    const filter = {};
+    if (all !== 'true') {
+      filter.isActive = true;
+    }
 
     // Filter by category if provided
     if (category) {
@@ -241,6 +248,9 @@ exports.updateProduct = async (req, res, next) => {
     await product.save();
     await product.populate('category', 'name description');
 
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'Product', product._id, product.name);
+
     res.status(200).json({
       success: true,
       message: 'Product updated successfully',
@@ -259,7 +269,7 @@ exports.updateProduct = async (req, res, next) => {
 exports.updateStock = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { quantity, action } = req.body;
+    const { quantity, action, notes } = req.body;
 
     if (!id || id.length !== 24) {
       return next(new AppError('Invalid product ID', 400));
@@ -276,9 +286,17 @@ exports.updateStock = async (req, res, next) => {
     let product;
     try {
       if (action === 'reduce') {
-        product = await inventoryService.reduceStock(id, quantity);
+        product = await inventoryService.reduceStock(id, quantity, {
+          performedBy: req.user.id,
+          reason: 'manual',
+          notes: notes || 'Direct stock reduction via product stock update endpoint'
+        });
       } else {
-        product = await inventoryService.increaseStock(id, quantity);
+        product = await inventoryService.increaseStock(id, quantity, {
+          performedBy: req.user.id,
+          reason: 'manual',
+          notes: notes || 'Direct stock increase via product stock update endpoint'
+        });
       }
     } catch (error) {
       return next(error);
@@ -316,6 +334,9 @@ exports.deleteProduct = async (req, res, next) => {
 
     product.isActive = false;
     await product.save();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'delete', 'Product', product._id, product.name);
 
     res.status(200).json({
       success: true,

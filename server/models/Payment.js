@@ -22,7 +22,7 @@ const paymentSchema = new Schema(
     // User who made the payment
     user: {
       type: ObjectId,
-      ref: 'User',
+      ref: 'Customer',
       required: [true, 'User ID is required'],
     },
 

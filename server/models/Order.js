@@ -38,7 +38,7 @@ const orderSchema = new mongoose.Schema(
     // Customer Info
     customer: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Customer',
       required: [true, 'Customer is required'],
     },
 
@@ -75,7 +75,10 @@ const orderSchema = new mongoose.Schema(
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
     },
-
+    taxAmount: {
+      type: Number,
+      default: 0,
+    },
     deliveryCharge: {
       type: Number,
       default: 0,
@@ -131,7 +134,7 @@ const orderSchema = new mongoose.Schema(
     // Rider Assignment
     rider: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Rider',
       default: null,
     },
 

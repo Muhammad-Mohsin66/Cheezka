@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { checkHealth, createOrder, listOrders, updateOrderStatus } from '../utils/api';
+import { checkHealth, createOrder, listOrders, updateOrderStatus, getCategories, getProducts, getDeals, getBankAccounts } from '../utils/api';
 import {
   getCart,
   setCart as persistCart,
@@ -29,6 +29,51 @@ function getLocalJson(key, fallback) {
 function setLocalJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
+
+export const getImageUrl = (prod) => {
+  if (prod.image) return prod.image;
+  const mapping = {
+    'Zinger Burger': 'zinger_burger.png',
+    'Zinger Cheeze Burger': 'zinger_cheese_burger.png',
+    'Patty Burger': 'patty_burger.png',
+    'Patty Cheeze Burger': 'patty_burger.png',
+    'Zinger Shawarma': 'chicken_shawarma.png',
+    'Chicken Shawarma': 'chicken_shawarma.png',
+    'Zinger Cheeze Shawarma': 'chicken_shawarma.png',
+    'B.B.Q Chicken Pizza': 'bbq_pizza.png',
+    'Cheese Lover Pizza': 'cheese_pizza.png',
+    'Creamy Pasta': 'creamy_pasta.png',
+    'Crunchy Pasta': 'crunchy_pasta.png',
+    'French Fries': 'loaded_fries.png',
+    'Loaded Fries': 'loaded_fries.png',
+    'Cheezka Special': 'special_pizza.png',
+    'Vegetable Pizza': 'vegetable_pizza.png',
+    'Hut Spicy Pizza': 'spicy_pizza.png',
+    'Chicken Achari Pizza': 'tikka_pizza.png',
+    'Chicken Tikka Pizza': 'tikka_pizza.png',
+    'Chicken Fajeta Pizza': 'fajita_pizza.png',
+    'Chicken Supreme Pizza': 'special_pizza.png',
+    'Crown Crust': 'stuffed_crust.png',
+    'Kabab Crust': 'kabab_pizza.png',
+    'Cheeze Crust': 'stuffed_crust.png',
+    'Chicken Crust': 'stuffed_crust.png',
+    'Square King Lazania Pizza': 'cheese_pizza.png',
+    'Behari Kabab Pizza': 'kabab_pizza.png',
+    'Malai Boti Pizza': 'cheese_pizza.png',
+    'Zinger Paratha Roll': 'paratha_roll.png',
+    'Zinger Paratha Cheeze': 'paratha_roll.png',
+    'Chicken Paratha': 'paratha_roll.png',
+  };
+  if (mapping[prod.name]) return `/images/menu/${mapping[prod.name]}`;
+
+  let fallback = prod.name.toLowerCase();
+  if (fallback.includes('pizza')) return '/images/menu/cheese_pizza.png';
+  if (fallback.includes('burger')) return '/images/menu/patty_burger.png';
+  if (fallback.includes('pasta')) return '/images/menu/creamy_pasta.png';
+  if (fallback.includes('fries')) return '/images/menu/loaded_fries.png';
+  if (fallback.includes('shawarma') || fallback.includes('roll')) return '/images/menu/chicken_shawarma.png';
+  return '/images/menu/patty_burger.png';
+};
 
 // ─────────────────────────────────────────────
 // Login
@@ -279,7 +324,7 @@ export function useOrdersPage() {
       const data = await listOrders();
       // Backend returns { success, count, data }
       const list = data?.data ?? data;
-      
+
       const mapped = (Array.isArray(list) ? list : []).map(order => ({
         order_id: order._id,
         created_at: order.createdAt || order.created_at,
@@ -288,6 +333,7 @@ export function useOrdersPage() {
         customer_phone: order.phoneNumber || order.customer_phone || '',
         customer_address: order.shippingAddress || order.customer_address || '',
         payment_method: order.paymentMethod || order.payment_method || 'COD',
+        payment_status: order.paymentStatus || '',
         notes: order.notes || '',
         items: (order.orderItems || order.items || []).map(item => ({
           name: item.name,
@@ -295,7 +341,8 @@ export function useOrdersPage() {
           qty: item.quantity || item.qty,
           price: item.price
         })),
-        total: order.grandTotal || order.total || order.totalAmount || 0
+        total: order.grandTotal || order.total || order.totalAmount || 0,
+        refund: order.refund || null
       }));
 
       setOrders(mapped);
@@ -332,7 +379,7 @@ export function useOrdersPage() {
 // ─────────────────────────────────────────────
 // Shop / Cart
 // ─────────────────────────────────────────────
-export function useShopPage(menuVersion = 0) {
+export function useShopPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -340,6 +387,50 @@ export function useShopPage(menuVersion = 0) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [status, setStatus] = useState({ message: '', error: false });
   const [placing, setPlacing] = useState(false);
+  const [menuVersion, setMenuVersion] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [bankAccounts, setBankAccounts] = useState([]);
+
+  useEffect(() => {
+    getBankAccounts()
+      .then(res => {
+        if (res.success && res.data) {
+          setBankAccounts(res.data);
+        }
+      })
+      .catch(err => console.error("Failed to fetch bank accounts:", err));
+  }, []);
+
+  useEffect(() => {
+    const container = document.getElementById('cart-bank-accounts');
+    if (!container) return;
+
+    if (bankAccounts.length === 0) {
+      container.innerHTML = '<div style="font-size: 11px; color: #dc2626;">No bank accounts configured.</div>';
+      return;
+    }
+
+    const esc = (text) =>
+      String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    container.innerHTML = bankAccounts.map(bank => {
+      return `
+        <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; font-size: 11px; color: #334155;">
+          <div style="font-weight: bold; color: #0f172a; margin-bottom: 2px;">${esc(bank.bankName)}</div>
+          <div style="display: grid; grid-template-columns: 50px 1fr; gap: 2px;">
+            <span style="color: #64748b;">Title:</span> <span style="font-weight: 600;">${esc(bank.accountTitle)}</span>
+            <span style="color: #64748b;">Acc:</span> <span style="font-weight: 600; font-family: monospace;">${esc(bank.accountNumber)}</span>
+            ${bank.iban ? `<span style="color: #64748b;">IBAN:</span> <span style="font-weight: 600; font-family: monospace;">${esc(bank.iban)}</span>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }, [bankAccounts, drawerOpen]);
 
   const updateCart = (updater) => {
     setCartState((prev) => {
@@ -438,18 +529,150 @@ export function useShopPage(menuVersion = 0) {
   }, [cart]);
 
   useEffect(() => {
+    let active = true;
+    function getCategoryIcon(name) {
+      const n = name.toLowerCase();
+      if (n.includes('pizza')) return 'fas fa-fire';
+      if (n.includes('burger')) return 'fas fa-hamburger';
+      if (n.includes('shawarma') || n.includes('wrap')) return 'fas fa-utensils';
+      if (n.includes('pasta') || n.includes('fries')) return 'fas fa-leaf';
+      return 'fas fa-utensils';
+    }
+
+    async function loadAndRender() {
+      try {
+        const [catRes, prodRes] = await Promise.all([getCategories(), getProducts()]);
+        if (!active) return;
+        const categories = catRes.data || catRes || [];
+        const products = prodRes.data || prodRes || [];
+
+        const container = document.getElementById('dynamic-menu-container');
+        if (!container) return;
+
+        const activeCats = categories.filter(c => c.isActive);
+        const activeProds = products.filter(p => p.isActive);
+
+        if (activeProds.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100">
+              <div style="font-size: 3rem; margin-bottom: 15px;">🍽️</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">Our Kitchen is Preparing!</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">We are currently updating our menu items. Please check back in a few minutes to see our fresh, hot choices!</p>
+            </div>
+          `;
+          setLoading(false);
+          return;
+        }
+
+
+        const grouped = {};
+        activeCats.forEach(cat => {
+          grouped[cat._id] = {
+            name: cat.name,
+            description: cat.description,
+            products: []
+          };
+        });
+
+        activeProds.forEach(prod => {
+          const catId = prod.category?._id || prod.category;
+          if (grouped[catId]) {
+            grouped[catId].products.push(prod);
+          }
+        });
+
+        let html = '';
+        let sectionIndex = 0;
+        activeCats.forEach((cat) => {
+          const catGroup = grouped[cat._id];
+          if (!catGroup || catGroup.products.length === 0) return;
+
+          const iconClass = getCategoryIcon(cat.name);
+
+          if (sectionIndex > 0) {
+            html += `<hr class="section-divider">`;
+          }
+          sectionIndex++;
+
+          html += `
+            <div class="menu-section">
+              <div class="section-header">
+                <h2><i class="${iconClass} ck-icon-accent ck-fs-15r ck-mr-8"></i> ${cat.name}</h2>
+              </div>
+              <div class="row">
+                ${catGroup.products.map(prod => {
+            const hasSizes = prod.sizes && prod.sizes.length > 0;
+            const sizeBoxes = hasSizes
+              ? prod.sizes.map((s, idx) => `
+                        <div class="size-box ${idx === 0 ? 'active' : ''}">
+                          <span class="size-label">${s.size}</span>
+                          <span class="size-price">${s.price}/-</span>
+                        </div>
+                      `).join('')
+              : '';
+
+            return `
+                    <div class="col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
+                      <div class="menu-card" data-product-id="${prod._id}">
+                        <div class="menu-card-img-wrap">
+                          <img src="${getImageUrl(prod)}" alt="${prod.name}" class="menu-card-img" />
+                          ${prod.stockQuantity <= 0 ? '<span class="menu-badge" style="background:#dc2626;color:white;">Out of Stock</span>' : ''}
+                        </div>
+                        <p class="menu-item-name">${prod.name}</p>
+                        ${hasSizes
+                ? `<div class="size-grid">${sizeBoxes}</div>`
+                : `
+                            <div class="single-price-wrap">
+                              <span class="price-amount">Rs. ${prod.basePrice}/-</span>
+                            </div>
+                          `}
+                      </div>
+                    </div>
+                  `;
+          }).join('')}
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        setLoading(false);
+        setMenuVersion(v => v + 1);
+      } catch (err) {
+        console.error('Error rendering shop page:', err);
+        const container = document.getElementById('dynamic-menu-container');
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100">
+              <div style="font-size: 3rem; margin-bottom: 15px; color:#dc2626;">⚠️</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">Error Loading Menu</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">Could not load products. Please check your internet connection or reload the page.</p>
+            </div>
+          `;
+        }
+        setLoading(false);
+      }
+    }
+
+    loadAndRender();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
     const parsePrice = (raw) => {
       const cleaned = String(raw || '').replace(/[^0-9]/g, '');
       return cleaned ? parseInt(cleaned, 10) : 0;
     };
 
-    const addToCart = (name, size, price) => {
+    const addToCart = (productId, name, size, price) => {
       updateCart((prev) => {
         const found = prev.find((item) => item.name === name && item.size === size && item.price === price);
         if (found) {
           return prev.map((item) => (item === found ? { ...item, qty: item.qty + 1 } : item));
         }
-        return [...prev, { name, size, price, qty: 1 }];
+        return [...prev, { product: productId, name, size, price, qty: 1 }];
       });
       setStatus({ message: `Added to cart: ${name}${size ? ` (${size})` : ''}`, error: false });
     };
@@ -530,20 +753,22 @@ export function useShopPage(menuVersion = 0) {
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const { size, price } = getActiveSizeInfo();
-        addToCart(itemName, size, price);
+        const productId = card.getAttribute('data-product-id');
+        addToCart(productId, itemName, size, price);
       });
 
       buyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const { size, price } = getActiveSizeInfo();
-        addToCart(itemName, size, price);
+        const productId = card.getAttribute('data-product-id');
+        addToCart(productId, itemName, size, price);
         setDrawerOpen(true);
         setTimeout(() => document.getElementById('customer-name')?.focus(), 120);
       });
 
       card.setAttribute('data-cart-enhanced', '1');
     });
-  }, [menuVersion]);
+  }, [menuVersion, loading]);
 
   useEffect(() => {
     const drawer = document.getElementById('cart-drawer');
@@ -595,6 +820,19 @@ export function useShopPage(menuVersion = 0) {
         return;
       }
 
+      let transactionId = '';
+      let screenshotFile = null;
+      if (paymentMethod === 'Online Payment') {
+        transactionId = document.getElementById('transaction-id')?.value || '';
+        const fileInput = document.getElementById('payment-screenshot');
+        screenshotFile = fileInput?.files?.[0] || null;
+
+        if (!transactionId.trim() || !screenshotFile) {
+          setStatus({ message: 'Transaction ID and Screenshot are required for Online Payment.', error: true });
+          return;
+        }
+      }
+
       setPlacing(true);
       try {
         const total = cart.reduce((acc, item) => acc + item.qty * item.price, 0);
@@ -632,6 +870,33 @@ export function useShopPage(menuVersion = 0) {
           notes: notes.trim()
         });
         const orderId = savedOrder?._id || savedOrder?.data?._id || savedOrder?.order_id || '';
+
+        if (mappedPaymentMethod === 'Online' && screenshotFile) {
+          setStatus({ message: 'Order created. Uploading receipt...', error: false });
+          const formData = new FormData();
+          formData.append('order', orderId);
+          formData.append('transactionId', transactionId.trim());
+          formData.append('screenshot', screenshotFile);
+          formData.append('amount', savedOrder?.data?.grandTotal || total);
+          formData.append('paymentMethod', mappedPaymentMethod);
+
+          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+          const uploadHeaders = {};
+          const token = localStorage.getItem('authToken');
+          if (token) uploadHeaders['Authorization'] = `Bearer ${token}`;
+
+          const uploadRes = await fetch(`${API_BASE}/payments/upload/${orderId}`, {
+            method: 'POST',
+            headers: uploadHeaders,
+            body: formData
+          });
+
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json().catch(() => ({}));
+            throw new Error(`Order placed, but receipt upload failed: ${errData.message || errData.detail || 'Unknown error'}`);
+          }
+        }
+
         clearCart();
         localStorage.removeItem('cheezka_checkout_form');
         updateCart([]);
@@ -704,9 +969,262 @@ export function useShopPage(menuVersion = 0) {
       const keydown = (e) => {
         if (e.key === 'Enter' && input.tagName !== 'TEXTAREA') e.preventDefault();
       };
-      input.addEventListener('change', save);
+
+      const handleChange = (e) => {
+        save();
+        if (id === 'payment-method') {
+          const detailsDiv = document.getElementById('online-payment-details');
+          if (detailsDiv) {
+            detailsDiv.style.display = input.value === 'Online Payment' ? 'block' : 'none';
+          }
+        }
+      };
+
+      input.addEventListener('change', handleChange);
       input.addEventListener('input', save);
       input.addEventListener('keydown', keydown);
     });
+
+    const payMethodInput = document.getElementById('payment-method');
+    const detailsDiv = document.getElementById('online-payment-details');
+    if (payMethodInput && detailsDiv) {
+      detailsDiv.style.display = payMethodInput.value === 'Online Payment' ? 'block' : 'none';
+    }
+  }, [drawerOpen]);
+}
+
+// ─────────────────────────────────────────────
+// Pages page (Special Deals)
+// ─────────────────────────────────────────────
+export function usePagesPage() {
+  const [loading, setLoading] = useState(true);
+  const [dealsVersion, setDealsVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function loadDeals() {
+      try {
+        const res = await getDeals();
+        if (!active) return;
+        const deals = res.data || res || [];
+        const container = document.getElementById('dynamic-deals-container');
+        if (!container) return;
+
+        const activeDeals = deals.filter(d => d.isActive);
+
+        if (activeDeals.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100" style="width: 100%;">
+              <div style="font-size: 3rem; margin-bottom: 15px;">🎁</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">No Active Deals</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">We don't have any special deals running right now. Keep checking back or view our full menu!</p>
+            </div>
+          `;
+          setLoading(false);
+          return;
+        }
+
+        let html = '';
+        activeDeals.forEach((deal, idx) => {
+          const discountText = deal.discount ? `${deal.discount}% OFF` : `Deal ${idx + 1}`;
+          let itemsList = '';
+          if (deal.products && deal.products.length > 0) {
+            itemsList = deal.products.map(p => `<li>${p.name || p.title || p}</li>`).join('');
+          } else if (deal.description) {
+            const parts = deal.description.split('+');
+            itemsList = parts.map(part => `<li>${part.trim()}</li>`).join('');
+          }
+
+          html += `
+            <div class="col-lg-4 col-md-6 col-12 mb-4">
+              <div class="deal-card">
+                <div class="deal-top"><h3>${deal.title}</h3><span class="deal-tag">${discountText}</span></div>
+                <div class="deal-body">
+                  ${deal.products && deal.products.length > 0 && deal.description ? `<p class="deal-desc" style="color:#777; margin-bottom:12px; font-size:0.95rem;">${deal.description}</p>` : ''}
+                  ${itemsList ? `<ul class="deal-items" style="list-style:disc; padding-left:20px; margin-bottom:15px;">${itemsList}</ul>` : ''}
+                  <div class="deal-price">Rs. ${deal.dealPrice}/-</div>
+                  <a href="contact.html" class="deal-btn">Order This Deal</a>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        setLoading(false);
+        setDealsVersion(v => v + 1);
+      } catch (err) {
+        console.error('Error rendering deals page:', err);
+        const container = document.getElementById('dynamic-deals-container');
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100" style="width: 100%;">
+              <div style="font-size: 3rem; margin-bottom: 15px; color:#dc2626;">⚠️</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">Error Loading Deals</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">Could not load active deals. Please try reloading the page.</p>
+            </div>
+          `;
+        }
+        setLoading(false);
+      }
+    }
+
+    loadDeals();
+    return () => { active = false; };
   }, []);
 }
+
+// ─────────────────────────────────────────────
+// Home page (Featured Products)
+// ─────────────────────────────────────────────
+export function useHomePage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [homeVersion, setHomeVersion] = useState(0);
+  const [productsList, setProductsList] = useState([]);
+  const [cart, setCartState] = useState(() => getCart());
+
+  const updateCart = (updater) => {
+    setCartState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistCart(next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    let active = true;
+    async function loadHomeProducts() {
+      try {
+        const prodRes = await getProducts();
+        if (!active) return;
+        const products = prodRes.data || prodRes || [];
+        setProductsList(products);
+
+        const container = document.getElementById('dynamic-home-products');
+        if (!container) return;
+
+        const activeProds = products.filter(p => p.isActive).slice(0, 6);
+
+        if (activeProds.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100" style="width: 100%;">
+              <div style="font-size: 3rem; margin-bottom: 15px;">🍽️</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">Our Kitchen is Preparing!</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">We are currently updating our menu items. Please check back in a few minutes to see our fresh, hot choices!</p>
+            </div>
+          `;
+          setLoading(false);
+          return;
+        }
+
+        let html = '';
+        activeProds.forEach(prod => {
+          const hasSizes = prod.sizes && prod.sizes.length > 0;
+          let priceText = '';
+          if (hasSizes) {
+            const prices = prod.sizes.map(s => s.price);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            priceText = minPrice === maxPrice ? `${minPrice}` : `${minPrice} - ${maxPrice}`;
+          } else {
+            priceText = `${prod.basePrice}`;
+          }
+
+          html += `
+            <div class="col-lg-4 col-md-4 col-sm-6 productsubtitlenone product text-center mb-4">   
+              <a href="/shop" class="woocommerce-LoopProduct-link woocommerce-loop-product__link"> 
+                <div class="wrappimage" style="height: 250px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fcf8f5; border-radius: 8px;">
+                  <img decoding="async" width="500" height="500" src="${getImageUrl(prod)}" class="attachment-woocommerce_thumbnail size-woocommerce_thumbnail" alt="${prod.name}" style="max-height: 100%; max-width: 100%; object-fit: contain;" />
+                </div>
+                <div class="star-rating" role="img" aria-label="Rated 5.00 out of 5"><span class="ck-w-100">Rated <strong class="rating">5.00</strong> out of 5</span></div>
+                <h2 class="woocommerce-loop-product__title" style="font-family:'Nunito Sans',sans-serif; font-weight: 800; color:#1b2a49;">${prod.name}</h2>
+                <span class="productsubtitle" style="font-size:0.9rem; color:#777; min-height:40px; display:block;">${prod.description || ''}</span>
+                <span class="price">
+                  <span class="woocommerce-Price-amount amount">
+                    <bdi><span class="woocommerce-Price-currencySymbol">Rs. </span>${priceText}</bdi>
+                  </span>
+                </span>
+              </a>
+              <button class="button product_type_simple add_to_cart_button ajax_add_to_cart homepage-add-to-cart" 
+                      data-product-id="${prod._id}" 
+                      data-product-name="${prod.name}"
+                      style="border:none; cursor:pointer;"
+                      role="button">Add to cart</button>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        setLoading(false);
+        setHomeVersion(v => v + 1);
+      } catch (err) {
+        console.error('Error rendering homepage products:', err);
+        const container = document.getElementById('dynamic-home-products');
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center py-5 ck-w-100" style="width: 100%;">
+              <div style="font-size: 3rem; margin-bottom: 15px; color:#dc2626;">⚠️</div>
+              <h3 style="color:#1B2A49; font-weight:800; font-family:'Nunito Sans',sans-serif;">Error Loading Products</h3>
+              <p style="color:#777; font-size:1.1rem; max-width:500px; margin: 0 auto;">Could not load popular products. Please check your internet connection.</p>
+            </div>
+          `;
+        }
+        setLoading(false);
+      }
+    }
+
+    loadHomeProducts();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const addToCart = (productId, name, size, price) => {
+      updateCart((prev) => {
+        const found = prev.find((item) => item.name === name && item.size === size && item.price === price);
+        if (found) {
+          return prev.map((item) => (item === found ? { ...item, qty: item.qty + 1 } : item));
+        }
+        return [...prev, { product: productId, name, size, price, qty: 1 }];
+      });
+      navigate('/shop?cart=1');
+    };
+
+    const buttons = document.querySelectorAll('.homepage-add-to-cart');
+    const handlers = [];
+
+    buttons.forEach((btn) => {
+      const handler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productId = btn.getAttribute('data-product-id');
+        const name = btn.getAttribute('data-product-name');
+
+        const prod = productsList.find(p => p._id === productId);
+        if (!prod) return;
+
+        let size = 'Regular';
+        let price = prod.basePrice || 0;
+
+        if (prod.sizes && prod.sizes.length > 0) {
+          size = prod.sizes[0].size;
+          price = prod.sizes[0].price;
+        }
+
+        addToCart(productId, name, size, price);
+      };
+
+      btn.addEventListener('click', handler);
+      handlers.push({ btn, handler });
+    });
+
+    return () => {
+      handlers.forEach(({ btn, handler }) => {
+        btn.removeEventListener('click', handler);
+      });
+    };
+  }, [homeVersion, loading, productsList, navigate]);
+}
+

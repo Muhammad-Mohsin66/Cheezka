@@ -1,5 +1,6 @@
 const DeliveryZone = require('../models/DeliveryZone');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * GET /api/delivery-zones
@@ -58,6 +59,9 @@ exports.createZone = async (req, res, next) => {
       radius,
     });
 
+    // Create Audit Log
+    await createAuditEntry(req, 'create', 'DeliveryZone', zone._id, zone.name);
+
     res.status(201).json({ success: true, message: 'Delivery zone created successfully', data: zone });
   } catch (error) {
     next(error);
@@ -84,6 +88,10 @@ exports.updateZone = async (req, res, next) => {
     if (isActive !== undefined) zone.isActive = isActive;
 
     await zone.save();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'DeliveryZone', zone._id, zone.name);
+
     res.status(200).json({ success: true, message: 'Delivery zone updated successfully', data: zone });
   } catch (error) {
     next(error);
@@ -99,6 +107,10 @@ exports.toggleZone = async (req, res, next) => {
     if (!zone) return next(new AppError('Delivery zone not found', 404));
     zone.isActive = !zone.isActive;
     await zone.save();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'update', 'DeliveryZone', zone._id, zone.name);
+
     res.status(200).json({ success: true, message: `Zone ${zone.isActive ? 'activated' : 'deactivated'}`, data: zone });
   } catch (error) {
     next(error);
@@ -112,7 +124,14 @@ exports.deleteZone = async (req, res, next) => {
   try {
     const zone = await DeliveryZone.findById(req.params.id);
     if (!zone) return next(new AppError('Delivery zone not found', 404));
+    
+    const zoneName = zone.name;
+    const zoneId = zone._id;
     await zone.deleteOne();
+
+    // Create Audit Log
+    await createAuditEntry(req, 'delete', 'DeliveryZone', zoneId, zoneName);
+
     res.status(200).json({ success: true, message: 'Delivery zone deleted successfully' });
   } catch (error) {
     next(error);

@@ -27,6 +27,7 @@ export default function InventoryLogsPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (reasonFilter) params.set('reason', reasonFilter);
+      params.set('limit', '1000');
       const res = await api.get(`/inventory/logs?${params.toString()}`);
       setLogs(res.data?.data || []);
     } catch { /* silently fail */ }
@@ -65,12 +66,12 @@ export default function InventoryLogsPage() {
         <StatsCard icon="▼" label="Decreases" value={logs.filter((l) => l.changeType === 'decrease').length} color="#dc2626" />
       </div>
       <Card>
-        <div style={{ display: 'flex', gap: 12, padding: '16px 20px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, padding: '16px 20px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap', alignItems: 'center' }}>
           <SearchBar value={search} onChange={setSearch} placeholder="Search product or user…" />
-          <select value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} style={{ padding: '7px 12px', border: '1px solid #e0e0e0', borderRadius: 8, fontSize: 13, color: '#555', background: 'white' }}>
+          <Select value={reasonFilter} onChange={setReasonFilter} style={{ width: 'auto', minWidth: 150, height: 38, padding: '0 12px' }}>
             <option value="">All Reasons</option>
             {Object.keys(REASON_MAP).map((r) => <option key={r} value={r}>{REASON_MAP[r].label}</option>)}
-          </select>
+          </Select>
         </div>
         {loading ? <Spinner /> : <Table columns={columns} data={filtered} emptyMessage="No inventory log entries found" />}
       </Card>

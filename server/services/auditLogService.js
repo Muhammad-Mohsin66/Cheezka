@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AuditLog = require('../models/AuditLog');
 
 /**
@@ -26,8 +27,23 @@ class AuditLogService {
         errorMessage = null,
       } = data;
 
+      let userModel = 'User';
+      if (user) {
+        const isEmployee = await mongoose.model('Employee').exists({ _id: user });
+        if (isEmployee) userModel = 'Employee';
+        else {
+          const isRider = await mongoose.model('Rider').exists({ _id: user });
+          if (isRider) userModel = 'Rider';
+          else {
+            const isCustomer = await mongoose.model('Customer').exists({ _id: user });
+            if (isCustomer) userModel = 'Customer';
+          }
+        }
+      }
+
       const auditLog = await AuditLog.create({
         user,
+        userModel,
         action,
         targetCollection,
         targetId,

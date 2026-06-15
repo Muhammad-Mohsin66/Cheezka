@@ -31,7 +31,7 @@ const refundSchema = new Schema(
     // Customer who requested the refund
     user: {
       type: ObjectId,
-      ref: 'User',
+      ref: 'Customer',
       required: [true, 'User ID is required'],
     },
 
@@ -104,7 +104,7 @@ refundSchema.pre('find', function () {
   }
 });
 
-refundSchema.pre('findById', function () {
+refundSchema.pre('findOne', function () {
   if (!this.getOptions().lean) {
     this.populate('order', 'orderStatus grandTotal paymentMethod')
       .populate('payment', 'amount status paymentMethod')

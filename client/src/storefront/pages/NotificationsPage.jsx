@@ -23,7 +23,7 @@ const NotificationsPage = () => {
       setError(null);
       const data = await notificationService.getNotifications(page, PAGE_SIZE);
 
-      if (data.notifications) {
+      if (data && data.notifications) {
         const filteredNotifications =
           filterStatus === 'all'
             ? data.notifications
@@ -32,7 +32,7 @@ const NotificationsPage = () => {
             : data.notifications.filter((n) => n.isRead);
 
         setNotifications(filteredNotifications);
-        setTotalPages(Math.ceil((data.total || 0) / PAGE_SIZE));
+        setTotalPages(data.pagination?.pages || 1);
       } else {
         setNotifications(Array.isArray(data) ? data : []);
         setTotalPages(1);

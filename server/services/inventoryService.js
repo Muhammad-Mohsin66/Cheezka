@@ -1,13 +1,16 @@
 const Product = require('../models/Product');
+const InventoryLog = require('../models/InventoryLog');
+const User = require('../models/User');
 const AppError = require('../utils/AppError');
 
 /**
  * Reduce stock quantity for a product
  * @param {string} productId - Product ID
  * @param {number} quantity - Quantity to reduce
+ * @param {Object} options - Logging context (performedBy, reason, relatedOrder, notes)
  * @returns {Promise<Object>} Updated product
  */
-exports.reduceStock = async (productId, quantity) => {
+exports.reduceStock = async (productId, quantity, options = {}) => {
   if (!productId || !quantity) {
     throw new AppError('Product ID and quantity are required', 400);
   }
@@ -28,11 +31,35 @@ exports.reduceStock = async (productId, quantity) => {
     );
   }
 
+  const previousStock = product.stockQuantity;
   product.stockQuantity -= quantity;
 
   // Pre-save middleware will automatically set isOutOfStock
   await product.save();
 
+  // Determine performedBy (fallback to admin user if not provided)
+  let performedBy = options.performedBy;
+  if (!performedBy) {
+    const admin = await User.findOne({ role: 'admin' });
+    if (admin) performedBy = admin._id;
+  }
+
+  let log = null;
+  if (performedBy) {
+    log = await InventoryLog.create({
+      product: product._id,
+      changeType: 'decrease',
+      quantity,
+      reason: options.reason || 'manual',
+      relatedOrder: options.relatedOrder || null,
+      performedBy,
+      previousStock,
+      newStock: product.stockQuantity,
+      notes: options.notes || '',
+    });
+  }
+
+  product.lastLog = log;
   return product;
 };
 
@@ -40,9 +67,10 @@ exports.reduceStock = async (productId, quantity) => {
  * Increase stock quantity for a product
  * @param {string} productId - Product ID
  * @param {number} quantity - Quantity to increase
+ * @param {Object} options - Logging context (performedBy, reason, relatedOrder, notes)
  * @returns {Promise<Object>} Updated product
  */
-exports.increaseStock = async (productId, quantity) => {
+exports.increaseStock = async (productId, quantity, options = {}) => {
   if (!productId || !quantity) {
     throw new AppError('Product ID and quantity are required', 400);
   }
@@ -56,11 +84,35 @@ exports.increaseStock = async (productId, quantity) => {
     throw new AppError('Product not found', 404);
   }
 
+  const previousStock = product.stockQuantity;
   product.stockQuantity += quantity;
 
   // Pre-save middleware will automatically update isOutOfStock
   await product.save();
 
+  // Determine performedBy (fallback to admin user if not provided)
+  let performedBy = options.performedBy;
+  if (!performedBy) {
+    const admin = await User.findOne({ role: 'admin' });
+    if (admin) performedBy = admin._id;
+  }
+
+  let log = null;
+  if (performedBy) {
+    log = await InventoryLog.create({
+      product: product._id,
+      changeType: 'increase',
+      quantity,
+      reason: options.reason || 'manual',
+      relatedOrder: options.relatedOrder || null,
+      performedBy,
+      previousStock,
+      newStock: product.stockQuantity,
+      notes: options.notes || '',
+    });
+  }
+
+  product.lastLog = log;
   return product;
 };
 

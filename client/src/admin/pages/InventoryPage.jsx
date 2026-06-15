@@ -24,8 +24,8 @@ export default function InventoryPage() {
     try {
       setLoading(true);
       const [invRes, sumRes] = await Promise.all([
-        api.get('/inventory'),
-        api.get('/inventory/summary'),
+        api.get('/inventory?all=true'),
+        api.get('/inventory/summary?all=true'),
       ]);
       setInventory(invRes.data?.data || []);
       setSummary(sumRes.data?.data || {});

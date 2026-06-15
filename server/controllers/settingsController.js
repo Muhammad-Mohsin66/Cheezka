@@ -1,4 +1,5 @@
 const SystemSetting = require('../models/SystemSetting');
+const { createAuditEntry } = require('./auditLogController');
 const AppError = require('../utils/AppError');
 
 /**
@@ -22,6 +23,37 @@ exports.getAllSettings = async (req, res, next) => {
     }, {});
 
     res.status(200).json({ success: true, count: settings.length, data: grouped });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/settings/public
+ * Get public settings (no auth required)
+ */
+exports.getPublicSettings = async (req, res, next) => {
+  try {
+    const keys = [
+      'TAX_PERCENTAGE',
+      'MIN_ORDER_VALUE',
+      'DELIVERY_BASE_CHARGE',
+      'MAINTENANCE_MODE'
+    ];
+    
+    const settings = await SystemSetting.find({ key: { $in: keys } });
+    
+    // Map to simple key-value object
+    const publicSettings = settings.reduce((acc, s) => {
+      acc[s.key] = s.value;
+      return acc;
+    }, {});
+    
+    // Provide defaults if not found
+    if (publicSettings.TAX_PERCENTAGE === undefined) publicSettings.TAX_PERCENTAGE = 0;
+    if (publicSettings.MIN_ORDER_VALUE === undefined) publicSettings.MIN_ORDER_VALUE = 0;
+    
+    res.status(200).json({ success: true, data: publicSettings });
   } catch (error) {
     next(error);
   }
@@ -53,6 +85,8 @@ exports.updateSetting = async (req, res, next) => {
     setting.value = value;
     setting.lastUpdatedBy = req.user.id;
     await setting.save();
+
+    await createAuditEntry(req, 'update', 'Setting', setting._id, setting.key);
 
     res.status(200).json({ success: true, message: 'Setting updated successfully', data: setting });
   } catch (error) {
@@ -87,6 +121,8 @@ exports.createSetting = async (req, res, next) => {
       lastUpdatedBy: req.user.id,
     });
 
+    await createAuditEntry(req, 'create', 'Setting', setting._id, setting.key);
+
     res.status(201).json({ success: true, message: 'Setting created successfully', data: setting });
   } catch (error) {
     next(error);
@@ -104,6 +140,9 @@ exports.deleteSetting = async (req, res, next) => {
     if (!setting) return next(new AppError(`Setting "${key}" not found`, 404));
 
     await setting.deleteOne();
+
+    await createAuditEntry(req, 'delete', 'Setting', setting._id, setting.key);
+
     res.status(200).json({ success: true, message: 'Setting deleted successfully' });
   } catch (error) {
     next(error);

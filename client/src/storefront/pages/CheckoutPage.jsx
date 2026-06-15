@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { getCart, setCart as persistCart, clearCart } from '../utils/cart';
 import { createOrder } from '../utils/api';
+import api from '../../shared/services/api';
 import '../styles/Checkout.css';
 
 export default function CheckoutPage() {
@@ -18,6 +19,12 @@ export default function CheckoutPage() {
   });
   const [status, setStatus] = useState({ message: '', error: false });
   const [placing, setPlacing] = useState(false);
+
+  // Delivery Zones dynamic integration states
+  const [deliveryZones, setDeliveryZones] = useState([]);
+  const [selectedZoneId, setSelectedZoneId] = useState('');
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [settings, setSettings] = useState({ TAX_PERCENTAGE: 5, MIN_ORDER_VALUE: 0 });
 
   // Pre-populate user details when authenticated
   useEffect(() => {
@@ -47,6 +54,34 @@ export default function CheckoutPage() {
     } catch (e) {
       // Ignore
     }
+  }, []);
+
+  // Fetch active delivery zones on mount
+  useEffect(() => {
+    const fetchZonesAndBanks = async () => {
+      try {
+        const [zoneRes, bankRes, settingsRes] = await Promise.all([
+          api.get('/delivery-zones'),
+          api.get('/bank-accounts'),
+          api.get('/settings/public')
+        ]);
+        
+        const activeZones = (zoneRes.data?.data || []).filter((z) => z.isActive);
+        setDeliveryZones(activeZones);
+        if (activeZones.length > 0) {
+          setSelectedZoneId(activeZones[0]._id);
+        }
+
+        setBankAccounts(bankRes.data?.data || []);
+        
+        if (settingsRes.data?.success) {
+          setSettings((prev) => ({ ...prev, ...settingsRes.data.data }));
+        }
+      } catch (err) {
+        console.error('Error fetching checkout data:', err);
+      }
+    };
+    fetchZonesAndBanks();
   }, []);
 
   // Sync state changes with localStorage
@@ -88,10 +123,12 @@ export default function CheckoutPage() {
     });
   };
 
-  // Pricing calculations
+  // Pricing calculations (dynamic using active delivery zone base charge)
   const subtotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const deliveryFee = subtotal > 1500 ? 0 : 100;
-  const tax = Math.round(subtotal * 0.05);
+  const selectedZone = deliveryZones.find((z) => z._id === selectedZoneId);
+  const deliveryFee = selectedZone ? selectedZone.baseCharge : 100; // fallback to Rs. 100
+  const taxRate = settings.TAX_PERCENTAGE / 100;
+  const tax = Math.round(subtotal * taxRate);
   const grandTotal = subtotal + deliveryFee + tax;
 
   const handleSubmit = async (e) => {
@@ -99,6 +136,11 @@ export default function CheckoutPage() {
 
     if (!cart.length) {
       setStatus({ message: 'Your cart is empty. Add items first.', error: true });
+      return;
+    }
+
+    if (settings.MIN_ORDER_VALUE > 0 && subtotal < settings.MIN_ORDER_VALUE) {
+      setStatus({ message: `Minimum order value is Rs. ${settings.MIN_ORDER_VALUE}. Please add more items.`, error: true });
       return;
     }
 
@@ -131,16 +173,17 @@ export default function CheckoutPage() {
         };
       });
 
-      // Normalize phone format into strict 10 digits
+      // Normalize phone format into strict 11 digits
       let normalizedPhone = form.phone.replace(/[^0-9]/g, '');
-      if (normalizedPhone.length > 10) normalizedPhone = normalizedPhone.slice(-10);
-      else if (normalizedPhone.length < 10) normalizedPhone = normalizedPhone.padStart(10, '0');
+      if (normalizedPhone.length > 11) normalizedPhone = normalizedPhone.slice(-11);
+      else if (normalizedPhone.length < 11) normalizedPhone = normalizedPhone.padStart(11, '0');
 
       const savedOrder = await createOrder({
         orderItems: mappedItems,
-        shippingAddress: form.address.trim(),
+        shippingAddress: `${selectedZone ? `[Zone: ${selectedZone.name}] ` : ''}${form.address.trim()}`,
         phoneNumber: normalizedPhone,
         paymentMethod: mappedPaymentMethod,
+        deliveryCharge: deliveryFee,
         notes: form.notes.trim(),
       });
 
@@ -253,7 +296,7 @@ export default function CheckoutPage() {
                 <strong>{deliveryFee === 0 ? 'Free' : `Rs. ${deliveryFee}`}</strong>
               </div>
               <div className="breakdown-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef0f4' }}>
-                <span>Sales Tax (5%)</span>
+                <span>Sales Tax ({settings.TAX_PERCENTAGE}%)</span>
                 <strong>Rs. {tax}</strong>
               </div>
               <div className="breakdown-row total" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 0', marginTop: '5px', fontSize: '1.2rem', fontWeight: 800, color: '#1B2A49' }}>
@@ -318,6 +361,25 @@ export default function CheckoutPage() {
               />
             </div>
 
+            {deliveryZones.length > 0 && (
+              <div className="form-group" style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 700, color: '#1B2A49', marginBottom: '6px', display: 'block' }}>Delivery Area *</label>
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="form-input"
+                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', background: '#fff' }}
+                  required
+                >
+                  {deliveryZones.map((z) => (
+                    <option key={z._id} value={z._id}>
+                      {z.name} (Rs. {z.baseCharge})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="form-group" style={{ marginBottom: '15px' }}>
               <label style={{ fontWeight: 700, color: '#1B2A49', marginBottom: '6px', display: 'block' }}>Delivery Address *</label>
               <input
@@ -345,6 +407,32 @@ export default function CheckoutPage() {
                 <option value="Online Payment">Online Payment</option>
               </select>
             </div>
+
+            {form.paymentMethod === 'Online Payment' && bankAccounts.length > 0 && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '20px' }}>
+                <h4 style={{ margin: '0 0 12px 0', color: '#1e293b', fontSize: '15px' }}>
+                  <i className="fa fa-info-circle" style={{ color: '#3b82f6', marginRight: '6px' }}></i>
+                  Bank Transfer Instructions
+                </h4>
+                <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                  Please transfer exactly <strong>Rs. {grandTotal}</strong> to any of the following accounts. Your order will be processed once the payment is verified.
+                </p>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {bankAccounts.map((bank) => (
+                    <div key={bank._id} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px' }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{bank.bankName}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', fontSize: '13px', color: '#334155', gap: '4px' }}>
+                        <span style={{ color: '#64748b' }}>Title:</span> <span style={{ fontWeight: 600 }}>{bank.accountTitle}</span>
+                        <span style={{ color: '#64748b' }}>Acc No:</span> <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{bank.accountNumber}</span>
+                        {bank.iban && (
+                          <><span style={{ color: '#64748b' }}>IBAN:</span> <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{bank.iban}</span></>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label style={{ fontWeight: 700, color: '#1B2A49', marginBottom: '6px', display: 'block' }}>Order Notes (optional)</label>
@@ -375,7 +463,7 @@ export default function CheckoutPage() {
                 transition: 'opacity 0.2s',
               }}
             >
-              {placing ? 'Placing Order…' : 'Place Online Order'}
+              {placing ? 'Placing Order…' : 'Place Order'}
             </button>
           </form>
         </div>

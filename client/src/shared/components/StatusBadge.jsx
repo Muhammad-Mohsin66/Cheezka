@@ -28,6 +28,7 @@ const StatusBadge = ({ type = 'order', status }) => {
     const statusMap = {
       'Pending': '#FFC107',
       'Paid': '#4CAF50',
+      'Verified': '#4CAF50',
       'Failed': '#F44336',
       'Refunded': '#2196F3',
     };

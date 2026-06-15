@@ -81,8 +81,26 @@ exports.getDashboardSummary = async (req, res) => {
   const lowStockResult = await Product.aggregate([
     {
       $match: {
+        $expr: {
+          $and: [
+            { $gt: ['$stockQuantity', 0] },
+            { $lte: ['$stockQuantity', '$lowStockThreshold'] }
+          ]
+        }
+      },
+    },
+    {
+      $count: 'total',
+    },
+  ]);
+  const lowStockProducts = lowStockResult[0]?.total || 0;
+
+  // 7. Out of Stock Products Count
+  const outOfStockResult = await Product.aggregate([
+    {
+      $match: {
         $or: [
-          { stockQuantity: { $lte: '$lowStockThreshold' } },
+          { stockQuantity: 0 },
           { isOutOfStock: true },
         ],
       },
@@ -91,7 +109,7 @@ exports.getDashboardSummary = async (req, res) => {
       $count: 'total',
     },
   ]);
-  const lowStockProducts = lowStockResult[0]?.total || 0;
+  const outOfStockProducts = outOfStockResult[0]?.total || 0;
 
   res.status(200).json({
     success: true,
@@ -102,6 +120,7 @@ exports.getDashboardSummary = async (req, res) => {
       totalCustomers,
       pendingOrders,
       lowStockProducts,
+      outOfStockProducts,
     },
   });
 };

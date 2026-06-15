@@ -1,5 +1,6 @@
 const BankAccount = require('../models/BankAccount');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * ADMIN ACTIONS
@@ -33,6 +34,9 @@ exports.createBankAccount = async (req, res) => {
     isActive: true,
   });
 
+  // Create Audit Log
+  await createAuditEntry(req, 'create', 'BankAccount', bankAccount._id, bankAccount.bankName);
+
   res.status(201).json({
     success: true,
     message: 'Bank account created successfully',
@@ -60,6 +64,9 @@ exports.updateBankAccount = async (req, res) => {
   if (iban !== undefined) bankAccount.iban = iban ? iban.trim() : null;
 
   await bankAccount.save();
+
+  // Create Audit Log
+  await createAuditEntry(req, 'update', 'BankAccount', bankAccount._id, bankAccount.bankName);
 
   res.status(200).json({
     success: true,
@@ -89,6 +96,9 @@ exports.deactivateBankAccount = async (req, res) => {
   bankAccount.isActive = false;
   await bankAccount.save();
 
+  // Create Audit Log
+  await createAuditEntry(req, 'delete', 'BankAccount', bankAccount._id, bankAccount.bankName);
+
   res.status(200).json({
     success: true,
     message: 'Bank account deactivated successfully',
@@ -97,21 +107,12 @@ exports.deactivateBankAccount = async (req, res) => {
 };
 
 /**
- * Get all bank accounts
+ * Get all active bank accounts
  * PUBLIC: Anyone can view active accounts (for payment instructions)
  */
 exports.getAllBankAccounts = async (req, res) => {
-  const { includeInactive } = req.query;
-
-  // Build filter
-  const filter = {};
-
-  // Only show active accounts to non-admin users
-  if (!includeInactive || req.user.role !== 'admin') {
-    filter.isActive = true;
-  }
-
-  const accounts = await BankAccount.find(filter);
+  // Only show active accounts
+  const accounts = await BankAccount.find({ isActive: true });
 
   res.status(200).json({
     success: true,
@@ -119,6 +120,21 @@ exports.getAllBankAccounts = async (req, res) => {
     data: accounts,
   });
 };
+
+/**
+ * Get all bank accounts (including inactive)
+ * ADMIN ONLY
+ */
+exports.getAdminBankAccounts = async (req, res) => {
+  const accounts = await BankAccount.find({});
+
+  res.status(200).json({
+    success: true,
+    count: accounts.length,
+    data: accounts,
+  });
+};
+
 
 /**
  * Get single bank account
@@ -132,7 +148,7 @@ exports.getBankAccountDetails = async (req, res) => {
   }
 
   // Show full details only to admin, otherwise only active accounts
-  if (account.isActive === false && req.user.role !== 'admin') {
+  if (account.isActive === false && (!req.user || req.user.role !== 'admin')) {
     throw new AppError('Bank account not found', 404);
   }
 

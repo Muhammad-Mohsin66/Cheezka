@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Customer = require('../models/Customer');
+const Employee = require('../models/Employee');
+const Rider = require('../models/Rider');
 const OTPReset = require('../models/OTPReset');
 const { generateToken } = require('../utils/jwt');
 const AppError = require('../utils/AppError');
@@ -8,6 +11,56 @@ const {
   sendOTPEmail,
 } = require('../config/email');
 const crypto = require('crypto');
+
+const findUserByEmail = async (email) => {
+  const norm = email.toLowerCase().trim();
+  return await User.findOne({ email: norm }) ||
+         await Customer.findOne({ email: norm }) ||
+         await Employee.findOne({ email: norm }) ||
+         await Rider.findOne({ email: norm });
+};
+
+const findUserByEmailWithPassword = async (email) => {
+  const norm = email.toLowerCase().trim();
+  return await User.findOne({ email: norm }).select('+password') ||
+         await Customer.findOne({ email: norm }).select('+password') ||
+         await Employee.findOne({ email: norm }).select('+password') ||
+         await Rider.findOne({ email: norm }).select('+password');
+};
+
+const findUserByVerificationToken = async (hashedToken) => {
+  const query = {
+    emailVerificationToken: hashedToken,
+    emailVerificationExpire: { $gt: Date.now() }
+  };
+  return await User.findOne(query) ||
+         await Customer.findOne(query) ||
+         await Employee.findOne(query) ||
+         await Rider.findOne(query);
+};
+
+const findUserByResetToken = async (hashedToken) => {
+  const query = {
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  };
+  return await User.findOne(query) ||
+         await Customer.findOne(query) ||
+         await Employee.findOne(query) ||
+         await Rider.findOne(query);
+};
+
+const findUserByOTP = async (email, hashedOTP) => {
+  const query = {
+    email,
+    otpCode: hashedOTP,
+    otpExpire: { $gt: Date.now() }
+  };
+  return await User.findOne(query) ||
+         await Customer.findOne(query) ||
+         await Employee.findOne(query) ||
+         await Rider.findOne(query);
+};
 
 /**
  * Register a new user
@@ -27,48 +80,54 @@ exports.registerUser = async (req, res, next) => {
     }
 
     // Check if user already exists
-    let user = await User.findOne({
-      $or: [{ email }, { phone }],
-    });
+    let user = await findUserByEmail(email) ||
+               (phone ? await User.findOne({ phone }) || await Customer.findOne({ phone }) || await Employee.findOne({ phone }) || await Rider.findOne({ phone }) : null);
 
     if (user) {
-      return next(
-        new AppError(
-          'User with this email or phone already exists',
-          400
-        )
-      );
+      return next(new AppError('User with this email or phone already exists', 400));
     }
 
-    // Create user
-    user = await User.create({
+    // Create user in Customer collection (storefront signups are always customers)
+    user = await Customer.create({
       name,
       email,
       phone,
       password,
-      role: role || 'customer',
+      role: 'customer',
     });
 
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    user.emailVerificationToken = crypto
-      .createHash('sha256')
-      .update(verificationToken)
-      .digest('hex');
-    user.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    // Check dynamic setting for email verification
+    const SystemSetting = require('../models/SystemSetting');
+    const emailVerifSetting = await SystemSetting.findOne({ key: 'EMAIL_VERIFICATION_REQUIRED' });
+    // Default to false based on seed config
+    const requireVerification = emailVerifSetting ? (emailVerifSetting.value === true || emailVerifSetting.value === 'true') : false;
+
+    if (requireVerification) {
+      // Generate verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      user.emailVerificationToken = crypto
+        .createHash('sha256')
+        .update(verificationToken)
+        .digest('hex');
+      user.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+      // Send verification email
+      const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      await sendVerificationEmail(email, verificationToken, baseUrl);
+    } else {
+      user.isEmailVerified = true;
+    }
 
     await user.save();
-
-    // Send verification email
-    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-    await sendVerificationEmail(email, verificationToken, baseUrl);
 
     // Generate JWT token
     const token = generateToken(user._id, user.role);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully. Please verify your email.',
+      message: requireVerification 
+        ? 'User registered successfully. Please verify your email.' 
+        : 'User registered successfully.',
       token,
       user: user.toJSON(),
     });
@@ -90,8 +149,8 @@ exports.loginUser = async (req, res, next) => {
       return next(new AppError('Please provide email and password', 400));
     }
 
-    // Get user with password field
-    const user = await User.findOne({ email }).select('+password');
+    // Get user with password field from correct collection
+    const user = await findUserByEmailWithPassword(email);
 
     if (!user) {
       return next(new AppError('Invalid email or password', 401));
@@ -135,17 +194,13 @@ exports.verifyEmail = async (req, res, next) => {
       return next(new AppError('Verification token is required', 400));
     }
 
-    // Hash the token to match with stored token
     const hashedToken = crypto
       .createHash('sha256')
       .update(token)
       .digest('hex');
 
     // Find user with this token
-    const user = await User.findOne({
-      emailVerificationToken: hashedToken,
-      emailVerificationExpire: { $gt: Date.now() },
-    });
+    const user = await findUserByVerificationToken(hashedToken);
 
     if (!user) {
       return next(new AppError('Invalid or expired verification token', 400));
@@ -180,7 +235,7 @@ exports.requestPasswordReset = async (req, res, next) => {
       return next(new AppError('Email is required', 400));
     }
 
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
 
     if (!user) {
       return next(new AppError('User not found', 404));
@@ -221,17 +276,13 @@ exports.resetPassword = async (req, res, next) => {
       return next(new AppError('Token and new password are required', 400));
     }
 
-    // Hash the token to match with stored token
     const hashedToken = crypto
       .createHash('sha256')
       .update(token)
       .digest('hex');
 
     // Find user with valid reset token
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
+    const user = await findUserByResetToken(hashedToken);
 
     if (!user) {
       return next(new AppError('Invalid or expired reset token', 400));
@@ -265,7 +316,7 @@ exports.requestOTP = async (req, res, next) => {
       return next(new AppError('Email is required', 400));
     }
 
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
 
     if (!user) {
       return next(new AppError('User not found', 404));
@@ -309,18 +360,13 @@ exports.verifyOTP = async (req, res, next) => {
       return next(new AppError('Email and OTP are required', 400));
     }
 
-    // Hash the OTP to match with stored OTP
     const hashedOTP = crypto
       .createHash('sha256')
       .update(otp)
       .digest('hex');
 
     // Find user with valid OTP
-    const user = await User.findOne({
-      email,
-      otpCode: hashedOTP,
-      otpExpire: { $gt: Date.now() },
-    });
+    const user = await findUserByOTP(email, hashedOTP);
 
     if (!user) {
       return next(new AppError('Invalid or expired OTP', 400));
@@ -367,10 +413,9 @@ exports.resetRequest = async (req, res, next) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await findUserByEmail(normalizedEmail);
 
     if (!user) {
-      // Username enumeration protection or direct return: let's match the guide's standard
       return next(new AppError('Email address not found.', 404));
     }
 
@@ -378,13 +423,11 @@ exports.resetRequest = async (req, res, next) => {
       return next(new AppError('Your account is inactive.', 403));
     }
 
-    // Generate secure 6-digit OTP code & requestId & random salt
     const otp = crypto.randomInt(100000, 1000000).toString();
     const requestId = crypto.randomBytes(24).toString('base64url');
     const salt = crypto.randomBytes(16).toString('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins expiry
 
-    // Save reset record
     await OTPReset.create({
       requestId,
       email: normalizedEmail,
@@ -393,12 +436,10 @@ exports.resetRequest = async (req, res, next) => {
       expiresAt,
     });
 
-    // In development mode, log the generated OTP code to enable testing without working SMTP
     if (process.env.NODE_ENV === 'development') {
       console.log(`[OTP Reset Debug] Generated OTP for ${normalizedEmail}: ${otp}`);
     }
 
-    // Send OTP email
     await sendOTPEmail(normalizedEmail, otp);
 
     res.status(200).json({
@@ -428,19 +469,16 @@ exports.resetVerify = async (req, res, next) => {
       return next(new AppError('Invalid reset session.', 400));
     }
 
-    // Check expiry
     if (new Date() > record.expiresAt) {
       await OTPReset.deleteOne({ requestId });
       return next(new AppError('OTP code has expired.', 400));
     }
 
-    // Check attempt threshold limit (max 5)
     if (record.attempts >= 5) {
       await OTPReset.deleteOne({ requestId });
       return next(new AppError('Too many failed attempts. Session locked.', 400));
     }
 
-    // Hash the input OTP and run timing-attack-resistant compare_digest
     const inputHash = hashOtp(otp.trim(), record.otpSalt);
     const bufferA = Buffer.from(inputHash, 'hex');
     const bufferB = Buffer.from(record.otpHash, 'hex');
@@ -448,11 +486,9 @@ exports.resetVerify = async (req, res, next) => {
     const isCorrect = (bufferA.length === bufferB.length) && crypto.timingSafeEqual(bufferA, bufferB);
 
     if (!isCorrect) {
-      // Increment attempt counter on failure
       record.attempts += 1;
       await record.save();
 
-      // If they hit max attempts now, clean up immediately
       if (record.attempts >= 5) {
         await OTPReset.deleteOne({ requestId });
         return next(new AppError('Too many failed attempts. Session locked.', 400));
@@ -461,7 +497,6 @@ exports.resetVerify = async (req, res, next) => {
       return next(new AppError('Invalid OTP code.', 400));
     }
 
-    // Mark as verified
     record.verified = true;
     await record.save();
 
@@ -495,16 +530,14 @@ exports.resetComplete = async (req, res, next) => {
       return next(new AppError('Invalid or unverified reset session.', 400));
     }
 
-    const user = await User.findOne({ email: record.email });
+    const user = await findUserByEmail(record.email);
     if (!user) {
       return next(new AppError('User profile not found.', 404));
     }
 
-    // Update password (mongoose pre-save handles bcrypt hashing)
     user.password = newPassword;
     await user.save();
 
-    // Immediately remove reset record to prevent replay attacks
     await OTPReset.deleteOne({ requestId });
 
     res.status(200).json({

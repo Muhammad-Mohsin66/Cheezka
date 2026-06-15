@@ -73,6 +73,25 @@ export default function DealsPage() {
 
   const columns = [
     { key: 'title', label: 'Title', render: (v) => <strong>{v}</strong> },
+    { key: 'products', label: 'Included Products', render: (v) => {
+      if (!v || v.length === 0) return '—';
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {v.map((p) => (
+            <span key={p._id || p} style={{
+              fontSize: 10,
+              fontWeight: 600,
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              padding: '2px 6px',
+              borderRadius: 4
+            }}>
+              {p.name || 'Product'}
+            </span>
+          ))}
+        </div>
+      );
+    }},
     { key: 'dealPrice', label: 'Deal Price', render: (v) => <span style={{ color: '#FF6B35', fontWeight: 700 }}>Rs. {v}</span> },
     { key: 'discount', label: 'Discount', render: (v) => v ? `${v}%` : '—' },
     { key: 'startDate', label: 'Start', render: (v) => new Date(v).toLocaleDateString() },
@@ -109,6 +128,40 @@ export default function DealsPage() {
         {error && <div style={{ background: '#fee2e2', color: '#dc2626', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>{error}</div>}
         <FormField label="Deal Title *"><Input value={form.title} onChange={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="e.g. Weekend Special" /></FormField>
         <FormField label="Description"><textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the deal…" style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0e0', borderRadius: 8, fontSize: 13, resize: 'vertical', minHeight: 64, fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }} /></FormField>
+        <FormField label="Included Products">
+          <div style={{
+            maxHeight: '150px',
+            overflowY: 'auto',
+            border: '1px solid #e0e0e0',
+            borderRadius: 8,
+            padding: '10px',
+            backgroundColor: '#fafafa',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8
+          }}>
+            {products.map((p) => {
+              const checked = form.products.includes(p._id);
+              return (
+                <label key={p._id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm((f) => ({ ...f, products: [...f.products, p._id] }));
+                      } else {
+                        setForm((f) => ({ ...f, products: f.products.filter((id) => id !== p._id) }));
+                      }
+                    }}
+                  />
+                  {p.name} <span style={{ color: '#FF6B35', fontWeight: 700 }}>(Rs. {p.basePrice})</span>
+                </label>
+              );
+            })}
+            {products.length === 0 && <span style={{ color: '#aaa', fontStyle: 'italic', fontSize: 12 }}>No products available</span>}
+          </div>
+        </FormField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FormField label="Deal Price (Rs.) *"><Input type="number" value={form.dealPrice} onChange={(v) => setForm((f) => ({ ...f, dealPrice: v }))} placeholder="0" /></FormField>
           <FormField label="Original Price (Rs.)"><Input type="number" value={form.originalPrice} onChange={(v) => setForm((f) => ({ ...f, originalPrice: v }))} placeholder="0" /></FormField>

@@ -2,6 +2,25 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const User = require('../models/User');
+const Customer = require('../models/Customer');
+const Employee = require('../models/Employee');
+const Rider = require('../models/Rider');
+
+const getModelByRole = (role) => {
+  switch (role) {
+    case 'admin':
+      return User;
+    case 'customer':
+      return Customer;
+    case 'employee':
+      return Employee;
+    case 'rider':
+      return Rider;
+    default:
+      return User;
+  }
+};
 
 // Public routes
 router.post('/register', authController.registerUser);
@@ -18,8 +37,8 @@ router.post('/reset-complete', authController.resetComplete);
 // Protected routes
 router.get('/me', protect, async (req, res, next) => {
   try {
-    const User = require('../models/User');
-    const user = await User.findById(req.user.id).select('-password');
+    const Model = getModelByRole(req.user.role);
+    const user = await Model.findById(req.user.id).select('-password');
     if (!user) {
       return next(new (require('../utils/AppError'))('User not found', 404));
     }
@@ -35,8 +54,13 @@ router.get('/me', protect, async (req, res, next) => {
 // Admin and Employee - Get all users
 router.get('/users', protect, authorizeRoles('admin', 'employee'), async (req, res, next) => {
   try {
-    const User = require('../models/User');
-    const users = await User.find({}).select('-password');
+    const [admins, employees, riders, customers] = await Promise.all([
+      User.find({}).select('-password'),
+      Employee.find({}).select('-password'),
+      Rider.find({}).select('-password'),
+      Customer.find({}).select('-password'),
+    ]);
+    const users = [...admins, ...employees, ...riders, ...customers];
     res.status(200).json({
       success: true,
       count: users.length,

@@ -33,11 +33,11 @@ router.patch('/:orderId/assign-rider', protect, authorizeRoles('admin', 'employe
  * RIDER ROUTES (Protected)
  */
 
-// Get my deliveries (rider only)
-router.get('/rider/deliveries', protect, authorizeRoles('rider'), orderController.getMyDeliveries);
+// Get my deliveries (rider only, or admin/employee to view all/specific ones)
+router.get('/rider/deliveries', protect, authorizeRoles('rider', 'admin', 'employee'), orderController.getMyDeliveries);
 
-// Update delivery status (rider only)
-router.patch('/:orderId/delivery-status', protect, authorizeRoles('rider'), orderController.updateDeliveryStatus);
+// Update delivery status
+router.patch('/:orderId/delivery-status', protect, authorizeRoles('rider', 'admin', 'employee'), orderController.updateDeliveryStatus);
 
 /**
  * SHARED ROUTES (Protected)

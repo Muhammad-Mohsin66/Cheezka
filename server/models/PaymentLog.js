@@ -15,8 +15,14 @@ const paymentLogSchema = new mongoose.Schema(
     },
     performedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      refPath: 'performedByModel',
       required: [true, 'User is required'],
+    },
+    performedByModel: {
+      type: String,
+      required: true,
+      enum: ['User', 'Customer', 'Employee', 'Rider'],
+      default: 'User',
     },
     note: {
       type: String,

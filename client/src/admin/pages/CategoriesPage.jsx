@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../shared/services/api';
-import { PageHeader, StatsCard, Card, Btn, Badge, SearchBar, Table, Modal, FormField, Input, Spinner } from '../components/AdminUI';
+import { PageHeader, StatsCard, Card, Btn, Badge, SearchBar, Table, Modal, FormField, Input, Select, Spinner } from '../components/AdminUI';
 
 const STATUS_MAP = {
   true:  { label: 'Active',   bg: '#dcfce7', color: '#16a34a' },
@@ -14,13 +14,13 @@ export default function CategoriesPage() {
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', image: '' });
+  const [form, setForm] = useState({ name: '', description: '', image: '', isActive: true });
   const [error, setError] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/categories');
+      const res = await api.get('/categories?all=true');
       setCategories(res.data?.data || []);
     } catch { setError('Failed to load categories'); }
     finally { setLoading(false); }
@@ -32,14 +32,14 @@ export default function CategoriesPage() {
     c.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openCreate = () => { setForm({ name: '', description: '', image: '' }); setSelected(null); setModal('create'); };
-  const openEdit = (cat) => { setForm({ name: cat.name, description: cat.description || '', image: cat.image || '' }); setSelected(cat); setModal('edit'); };
+  const openCreate = () => { setForm({ name: '', description: '', image: '', isActive: true }); setSelected(null); setModal('create'); };
+  const openEdit = (cat) => { setForm({ name: cat.name, description: cat.description || '', image: cat.image || '', isActive: cat.isActive !== false }); setSelected(cat); setModal('edit'); };
 
   const handleSave = async () => {
     if (!form.name) { setError('Category name is required'); return; }
     try {
       setSaving(true); setError('');
-      const payload = { name: form.name.trim(), description: form.description, image: form.image };
+      const payload = { name: form.name.trim(), description: form.description, image: form.image, isActive: form.isActive };
       if (modal === 'create') {
         await api.post('/categories', payload);
       } else {
@@ -89,6 +89,12 @@ export default function CategoriesPage() {
         <FormField label="Category Name *"><Input value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="e.g. Burgers" /></FormField>
         <FormField label="Description"><textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short description…" style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0e0', borderRadius: 8, fontSize: 13, resize: 'vertical', minHeight: 72, fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }} /></FormField>
         <FormField label="Image URL"><Input value={form.image} onChange={(v) => setForm((f) => ({ ...f, image: v }))} placeholder="https://…" /></FormField>
+        <FormField label="Status">
+          <Select value={form.isActive ? 'true' : 'false'} onChange={(v) => setForm((f) => ({ ...f, isActive: v === 'true' }))}>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+        </FormField>
       </Modal>
     </div>
   );
