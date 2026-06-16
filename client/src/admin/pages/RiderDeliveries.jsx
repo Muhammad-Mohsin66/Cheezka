@@ -129,6 +129,23 @@ const RiderDeliveries = () => {
       render: (value) => `Rs. ${value || 0}`,
     },
     {
+      key: 'paymentMethod',
+      label: 'Payment',
+      width: '100px',
+      render: (value) => (
+        <span style={{
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontWeight: '600',
+          backgroundColor: value === 'COD' ? '#f3f4f6' : '#e0f2fe',
+          color: value === 'COD' ? '#374151' : '#0369a1'
+        }}>
+          {value || 'N/A'}
+        </span>
+      ),
+    },
+    {
       key: 'orderStatus',
       label: 'Status',
       width: '150px',
@@ -243,8 +260,16 @@ const RiderDeliveries = () => {
       <ConfirmModal
         isOpen={completeModal}
         title="Mark as Delivered?"
-        message="Have you completed the delivery for this order? Please confirm when the customer has received their order."
-        confirmText="Yes, Delivered"
+        message={
+          deliveries.find(d => d._id === selectedOrderId)?.paymentMethod === 'COD' 
+            ? `This is a Cash on Delivery order. Have you collected Rs. ${deliveries.find(d => d._id === selectedOrderId)?.grandTotal} from the customer and completed the delivery?` 
+            : "Have you completed the delivery for this order? Please confirm when the customer has received their order."
+        }
+        confirmText={
+          deliveries.find(d => d._id === selectedOrderId)?.paymentMethod === 'COD' 
+            ? "Yes, Payment Received & Delivered" 
+            : "Yes, Delivered"
+        }
         cancelText="Cancel"
         onConfirm={handleConfirmDeliver}
         onCancel={() => setCompleteModal(false)}

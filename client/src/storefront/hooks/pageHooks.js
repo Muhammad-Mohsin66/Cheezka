@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { checkHealth, createOrder, listOrders, updateOrderStatus, getCategories, getProducts, getDeals, getBankAccounts } from '../utils/api';
+import { checkHealth, createOrder, listOrders, updateOrderStatus, getCategories, getProducts, getDeals, getBankAccounts, updateProfile } from '../utils/api';
 import {
   getCart,
   setCart as persistCart,
@@ -31,7 +31,14 @@ function setLocalJson(key, value) {
 }
 
 export const getImageUrl = (prod) => {
-  if (prod.image) return prod.image;
+  if (prod.image) {
+    if (prod.image.startsWith('http') || prod.image.startsWith('data:')) {
+      return prod.image;
+    }
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const serverUrl = apiBase.replace('/api', '');
+    return `${serverUrl}${prod.image}`;
+  }
   const mapping = {
     'Zinger Burger': 'zinger_burger.png',
     'Zinger Cheeze Burger': 'zinger_cheese_burger.png',
@@ -141,7 +148,7 @@ export function useLoginPage() {
       }
 
       const guestCart = preserveGuestCartThroughAuth();
-      authLogin({ ...data.user, rememberMe });
+      authLogin({ ...data.user, rememberMe }, data.token);
       localStorage.removeItem('cheezka_login_form');
       if (guestCart.length) {
         persistCart(guestCart);
@@ -240,7 +247,7 @@ export function useSignupPage() {
       }
 
       const guestCart = preserveGuestCartThroughAuth();
-      authLogin(data.user);
+      authLogin(data.user, data.token);
       if (guestCart.length) {
         persistCart(guestCart);
       }
@@ -279,8 +286,40 @@ export function useSignupPage() {
 // ─────────────────────────────────────────────
 export function useDashboardPage() {
   const navigate = useNavigate();
-  const { user, logout: authLogout, isAuthenticated, loading } = useAuth();
+  const { user, logout: authLogout, isAuthenticated, loading, updateUser } = useAuth();
   const [apiStatus, setApiStatus] = useState({ message: '', error: false, visible: false });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', password: '' });
+  const [editStatus, setEditStatus] = useState({ message: '', error: false });
+
+  useEffect(() => {
+    if (user && !isEditing) {
+      setEditForm({ name: user.name || '', phone: user.phone || '', password: '' });
+    }
+  }, [user, isEditing]);
+
+  const handleSaveProfile = async () => {
+    try {
+      setEditStatus({ message: 'Saving...', error: false });
+      const data = {};
+      if (editForm.name) data.name = editForm.name;
+      if (editForm.phone) data.phone = editForm.phone;
+      if (editForm.password) data.password = editForm.password;
+
+      const res = await updateProfile(data);
+      if (res.success && res.user) {
+        updateUser(res.user);
+        setIsEditing(false);
+        setEditStatus({ message: 'Profile updated successfully!', error: false });
+        setTimeout(() => setEditStatus({ message: '', error: false }), 3000);
+      } else {
+        setEditStatus({ message: 'Failed to update profile.', error: true });
+      }
+    } catch (err) {
+      setEditStatus({ message: err.message || 'Failed to update profile.', error: true });
+    }
+  };
 
   useEffect(() => {
     if (loading) return undefined;
@@ -314,7 +353,10 @@ export function useDashboardPage() {
     return user.name || user.email?.split('@')[0] || '';
   }, [user]);
 
-  return { user, displayName, apiStatus, logout };
+  return { 
+    user, displayName, apiStatus, logout,
+    isEditing, setIsEditing, editForm, setEditForm, editStatus, handleSaveProfile 
+  };
 }
 
 // ─────────────────────────────────────────────

@@ -1,5 +1,18 @@
 const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL ERROR: JWT_SECRET is not configured in production environment variables!');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: JWT_SECRET is not configured. Falling back to development secret key.');
+  }
+}
+
+const SECRET_KEY = JWT_SECRET || 'your-secret-key-change-in-production';
+
 /**
  * Generate JWT token for user authentication
  * @param {string} userId - User ID from database
@@ -9,7 +22,7 @@ const jwt = require('jsonwebtoken');
 const generateToken = (userId, role) => {
   return jwt.sign(
     { id: userId, role },
-    process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+    SECRET_KEY,
     {
       expiresIn: process.env.JWT_EXPIRE || '7d',
     }
@@ -25,7 +38,7 @@ const verifyToken = (token) => {
   try {
     return jwt.verify(
       token,
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      SECRET_KEY
     );
   } catch (error) {
     return null;

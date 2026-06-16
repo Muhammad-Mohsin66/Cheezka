@@ -9,6 +9,9 @@ const STATUS_MAP = {
   false: { label: 'Inactive', bg: '#fee2e2', color: '#dc2626' },
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const SERVER_URL = API_BASE_URL.replace('/api', '');
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -17,8 +20,29 @@ export default function ProductsPage() {
   const [modal, setModal] = useState(null); // null | 'create' | 'edit'
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', category: '', basePrice: '', stockQuantity: '', lowStockThreshold: '5', image: '', isActive: true, sizes: [{ size: 'M', price: '' }] });
   const [error, setError] = useState('');
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setUploadingImage(true);
+      const res = await api.post('/upload/product', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setForm((f) => ({ ...f, image: res.data.url }));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -118,7 +142,7 @@ export default function ProductsPage() {
   };
 
   const columns = [
-    { key: 'image', label: 'Image', width: 60, render: (v) => v ? <img src={v} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <span style={{ fontSize: 28 }}>🍔</span> },
+    { key: 'image', label: 'Image', width: 60, render: (v) => v ? <img src={v.startsWith('http') ? v : `${SERVER_URL}${v}`} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <span style={{ fontSize: 28 }}>🍔</span> },
     { key: 'name', label: 'Name', render: (v) => <strong>{v}</strong> },
     { key: 'category', label: 'Category', render: (v, row) => row.category?.name || '—' },
     { key: 'basePrice', label: 'Price', render: (v) => `Rs. ${v?.toFixed(0) || 0}` },
@@ -272,8 +296,23 @@ export default function ProductsPage() {
             style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0e0', borderRadius: 8, fontSize: 13, resize: 'vertical', minHeight: 72, fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
           />
         </FormField>
-        <FormField label="Image URL">
-          <Input value={form.image} onChange={(v) => setForm((f) => ({ ...f, image: v }))} placeholder="https://…" />
+        <FormField label="Product Image">
+          <div style={{ width: '100%', height: 160, border: '1px dashed #ccc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9f9f9', position: 'relative' }}>
+            {form.image ? (
+              <img src={form.image.startsWith('http') ? form.image : `${SERVER_URL}${form.image}`} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <div style={{ textAlign: 'center', color: '#888' }}>
+                {uploadingImage ? <Spinner /> : <span>Click to select image</span>}
+              </div>
+            )}
+            <input type="file" accept="image/*" onChange={handleImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} disabled={uploadingImage} />
+          </div>
+          {form.image && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+              <span style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{form.image}</span>
+              <button type="button" onClick={() => setForm(f => ({ ...f, image: '' }))} style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>Remove Image</button>
+            </div>
+          )}
         </FormField>
         <FormField label="Status">
           <Select value={form.isActive ? 'true' : 'false'} onChange={(v) => setForm((f) => ({ ...f, isActive: v === 'true' }))}>

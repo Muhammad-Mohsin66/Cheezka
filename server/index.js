@@ -24,22 +24,91 @@ const deliveryZonesRoutes = require('./routes/deliveryZones');
 const inventoryRoutes = require('./routes/inventory');
 const auditLogsRoutes = require('./routes/auditLogs');
 const settingsRoutes = require('./routes/settings');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
+
+// Trust proxy for secure cookies and rate limiting behind reverse proxies (Nginx, AWS, Heroku)
+app.set('trust proxy', 1);
+
+// Sentry Request Handler (must be the first middleware)
+if (process.env.SENTRY_DSN) {
+  const Sentry = require('@sentry/node');
+  app.use(Sentry.Handlers.requestHandler());
+}
 
 // Connect to MongoDB
 connectDB();
 
+// Rate limiting for auth and sensitive endpoints to prevent brute-force attacks
+const rateLimit = require('express-rate-limit');
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 auth/reset requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware
+const helmet = require('helmet');
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? (process.env.CLIENT_URL || '').split(',').map(url => url.trim()).filter(Boolean)
+  : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(morgan('combined'));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// Sanitize user-supplied data to prevent MongoDB Operator Injection / NoSQL Injection
+// Uses custom recursion for Express 5 compatibility (where req.query is read-only)
+const sanitizeObject = (obj) => {
+  if (obj && typeof obj === 'object') {
+    for (const key in obj) {
+      if (key.startsWith('$') || key.includes('.')) {
+        delete obj[key];
+      } else {
+        sanitizeObject(obj[key]);
+      }
+    }
+  }
+};
+
+app.use((req, res, next) => {
+  sanitizeObject(req.body);
+  sanitizeObject(req.query);
+  sanitizeObject(req.params);
+  next();
+});
+const logger = require('./utils/logger');
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Apply rate limiter specifically to auth routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/request-otp', authLimiter);
+app.use('/api/auth/verify-otp', authLimiter);
+app.use('/api/auth/request-reset', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/reset-request', authLimiter);
+app.use('/api/auth/reset-verify', authLimiter);
+app.use('/api/auth/reset-complete', authLimiter);
 
 // Routes
 app.use('/api/health', healthRoutes);
@@ -60,6 +129,7 @@ app.use('/api/delivery-zones', deliveryZonesRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check root endpoint
 app.get('/', (req, res) => {
@@ -79,12 +149,22 @@ app.use((req, res) => {
   });
 });
 
+// Sentry Error Handler (must run before other error handlers)
+if (process.env.SENTRY_DSN) {
+  const Sentry = require('@sentry/node');
+  app.use(Sentry.Handlers.errorHandler());
+}
+
 // Global error handler (must be last)
 app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    logger.info(`Server is running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV}`);
+  });
+}
+
+module.exports = app;

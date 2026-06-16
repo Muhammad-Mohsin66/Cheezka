@@ -89,6 +89,8 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+productSchema.index({ category: 1, isActive: 1 });
+
 // Pre-save middleware to update isOutOfStock based on stockQuantity
 productSchema.pre('save', function () {
   if (this.stockQuantity <= 0) {

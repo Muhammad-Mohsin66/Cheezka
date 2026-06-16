@@ -36,9 +36,30 @@ export default function PaymentsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch up to 1000 payments to avoid default limit of 10
-      const res = await api.get('/payments/admin/all?limit=1000');
-      setPayments(res.data?.data || []);
+      // Fetch up to 1000 payments and orders to avoid default limit of 10
+      const [paymentsRes, ordersRes] = await Promise.all([
+        api.get('/payments/admin/all?limit=1000'),
+        api.get('/orders/admin/all?limit=1000')
+      ]);
+      
+      const onlinePayments = paymentsRes.data?.data || [];
+      const allOrders = ordersRes.data?.data || [];
+      
+      const codPayments = allOrders
+        .filter(o => o.paymentMethod === 'COD')
+        .map(o => ({
+          _id: o._id,
+          customer: o.customer,
+          user: o.customer, // Map to handle either structure
+          amount: o.grandTotal,
+          paymentMethod: 'COD',
+          status: o.paymentStatus,
+          createdAt: o.createdAt,
+          isCod: true
+        }));
+
+      const merged = [...onlinePayments, ...codPayments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPayments(merged);
     } catch (err) {
       console.error('Error fetching payments:', err);
       showError('Failed to load payments');
@@ -209,7 +230,7 @@ export default function PaymentsPage() {
         onClose={() => setViewModal(null)}
         footer={
           <div style={{ display: 'flex', gap: 10 }}>
-            {viewModal?.status === 'Pending' && (
+            {viewModal?.status === 'Pending' && !viewModal?.isCod && (
               <>
                 <Btn variant="primary" size="sm" onClick={() => handleVerifyPayment(viewModal._id)} disabled={submitting}>Verify & Approve</Btn>
                 <Btn variant="danger" size="sm" onClick={() => setRejectModalOpen(true)}>Reject Screenshot</Btn>
@@ -237,7 +258,13 @@ export default function PaymentsPage() {
             ))}
 
             {/* Payment screenshot uploaded by user */}
-            {viewModal.screenshot ? (
+            {viewModal.isCod ? (
+              <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                <span style={{ display: 'block', fontSize: 24, marginBottom: 8 }}>💵</span>
+                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>Cash on Delivery Payment</h4>
+                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>This payment is automatically verified when the delivery rider marks the order as Delivered and collects the cash.</p>
+              </div>
+            ) : viewModal.screenshot ? (
               <div style={{ marginTop: 16 }}>
                 <span style={{ display: 'block', color: '#888', marginBottom: 8, fontWeight: 600 }}>📷 Payment Screenshot Proof:</span>
                 <a 
@@ -264,9 +291,7 @@ export default function PaymentsPage() {
                 <span style={{ display: 'block', fontSize: 11, color: '#999', textAlign: 'center', marginTop: 4 }}>Tip: Click the image to view it full-screen in a new tab.</span>
               </div>
             ) : (
-              viewModal.paymentMethod !== 'COD' && (
-                <p style={{ color: '#dc2626', fontStyle: 'italic', marginTop: 14 }}>⚠️ No screenshot uploaded for this online payment.</p>
-              )
+              <p style={{ color: '#dc2626', fontStyle: 'italic', marginTop: 14 }}>⚠️ No screenshot uploaded for this online payment.</p>
             )}
           </div>
         )}

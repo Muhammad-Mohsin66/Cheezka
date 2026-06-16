@@ -59,7 +59,8 @@ exports.placeOrder = async (req, res) => {
     if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
       product = await Product.findById(item.product);
     } else if (item.name) {
-      product = await Product.findOne({ name: { $regex: new RegExp(`^${item.name}$`, 'i') } });
+      const escapedName = item.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      product = await Product.findOne({ name: { $regex: new RegExp(`^${escapedName}$`, 'i') } });
     }
 
     if (!product) {

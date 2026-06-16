@@ -1,7 +1,10 @@
 import { useDashboardPage } from '../hooks/pageHooks';
 
 export default function DashboardPage() {
-  const { user, displayName, apiStatus, blogs = [], logout } = useDashboardPage();
+  const { 
+    user, displayName, apiStatus, blogs = [], logout,
+    isEditing, setIsEditing, editForm, setEditForm, editStatus, handleSaveProfile 
+  } = useDashboardPage();
 
   return (
     <div className="page-root">
@@ -44,12 +47,71 @@ export default function DashboardPage() {
         <div className="container dashboard-wrapper">
           <div className="row">
             <div className="col-lg-12 col-12">
-              <div className={`user-card ${user ? '' : 'ck-hidden'}`} id="user-card">
-                <h2 id="user-name">Welcome, {displayName}!</h2>
-                <div className="user-email" id="user-email">{user?.email || ''}</div>
-                <button className="logout-btn" onClick={logout}>
-                  <i className="fa fa-sign-out-alt ck-mr-8" />Logout
-                </button>
+              <div className={`user-card ${user ? '' : 'ck-hidden'}`} id="user-card" style={{ padding: '30px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
+                {!isEditing ? (
+                  <>
+                    <h2 id="user-name">Welcome, {displayName}!</h2>
+                    <div className="user-email" id="user-email">{user?.email || ''}</div>
+                    <div className="user-phone" style={{ color: '#666', marginBottom: 15 }}>{user?.phone || 'No phone number'}</div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className="ck-btn ck-btn-secondary" onClick={() => setIsEditing(true)} style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}>
+                        <i className="fa fa-edit ck-mr-8" />Edit Profile
+                      </button>
+                      <button className="logout-btn" onClick={logout}>
+                        <i className="fa fa-sign-out-alt ck-mr-8" />Logout
+                      </button>
+                    </div>
+                    {editStatus.message && (
+                      <div style={{ marginTop: 15, color: editStatus.error ? '#c62828' : '#2e7d32', fontSize: 14 }}>
+                        {editStatus.message}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="edit-profile-form" style={{ textAlign: 'left', maxWidth: 400 }}>
+                    <h3 style={{ marginBottom: 20 }}>Edit Profile</h3>
+                    <div style={{ marginBottom: 15 }}>
+                      <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Name</label>
+                      <input 
+                        type="text" 
+                        value={editForm.name} 
+                        onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 15 }}>
+                      <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Phone</label>
+                      <input 
+                        type="text" 
+                        value={editForm.phone} 
+                        onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>New Password <small style={{fontWeight: 'normal', color: '#666'}}>(leave blank to keep current)</small></label>
+                      <input 
+                        type="password" 
+                        value={editForm.password} 
+                        onChange={(e) => setEditForm({...editForm, password: e.target.value})}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className="ck-btn" style={{ background: '#FF6B35', color: '#fff', padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer' }} onClick={handleSaveProfile}>
+                        Save Changes
+                      </button>
+                      <button className="ck-btn ck-btn-secondary" style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }} onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                    {editStatus.message && (
+                      <div style={{ marginTop: 15, color: editStatus.error ? '#c62828' : '#2e7d32', fontSize: 14 }}>
+                        {editStatus.message}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div id="api-status" className={`api-status ${apiStatus.visible ? '' : 'ck-hidden'} ${apiStatus.error ? 'error' : 'success'}`}>

@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         localStorage.removeItem('cheezka_user');
+        localStorage.removeItem('customerToken');
         setCustomerUser(null);
         setCustomerIsAuthenticated(false);
       }
@@ -48,10 +49,13 @@ export const AuthProvider = ({ children }) => {
         if (userData && STAFF_ROLES.includes(userData.role)) {
           setStaffUser(userData);
           setStaffIsAuthenticated(true);
-          localStorage.setItem('staffUser', JSON.stringify(userData));
+          sessionStorage.setItem('staffUser', JSON.stringify(userData));
+          localStorage.removeItem('staffUser'); // Clean up old data
         }
       } catch (error) {
-        localStorage.removeItem('staffUser');
+        sessionStorage.removeItem('staffUser');
+        sessionStorage.removeItem('staffToken');
+        localStorage.removeItem('staffUser'); // Clean up old data
         setStaffUser(null);
         setStaffIsAuthenticated(false);
       }
@@ -62,14 +66,17 @@ export const AuthProvider = ({ children }) => {
     loadUsers();
   }, []);
 
-  const login = (userData) => {
+  const login = (userData, token) => {
     const isStaff = STAFF_ROLES.includes(userData?.role);
     if (isStaff) {
-      localStorage.setItem('staffUser', JSON.stringify(userData));
+      sessionStorage.setItem('staffUser', JSON.stringify(userData));
+      if (token) sessionStorage.setItem('staffToken', token);
+      localStorage.removeItem('staffUser'); // Clean up old data
       setStaffUser(userData);
       setStaffIsAuthenticated(true);
     } else {
       localStorage.setItem('cheezka_user', JSON.stringify(userData));
+      if (token) localStorage.setItem('customerToken', token);
       setCustomerUser(userData);
       setCustomerIsAuthenticated(true);
     }
@@ -88,11 +95,14 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (isStaffRoute) {
-      localStorage.removeItem('staffUser');
+      sessionStorage.removeItem('staffUser');
+      sessionStorage.removeItem('staffToken');
+      localStorage.removeItem('staffUser'); // Clean up old data
       setStaffUser(null);
       setStaffIsAuthenticated(false);
     } else {
       localStorage.removeItem('cheezka_user');
+      localStorage.removeItem('customerToken');
       setCustomerUser(null);
       setCustomerIsAuthenticated(false);
     }
@@ -102,7 +112,8 @@ export const AuthProvider = ({ children }) => {
     const isStaff = STAFF_ROLES.includes(updatedUserData?.role);
     if (isStaff) {
       setStaffUser(updatedUserData);
-      localStorage.setItem('staffUser', JSON.stringify(updatedUserData));
+      sessionStorage.setItem('staffUser', JSON.stringify(updatedUserData));
+      localStorage.removeItem('staffUser'); // Clean up old data
     } else {
       setCustomerUser(updatedUserData);
       localStorage.setItem('cheezka_user', JSON.stringify(updatedUserData));

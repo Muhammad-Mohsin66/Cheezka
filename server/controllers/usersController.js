@@ -166,8 +166,12 @@ exports.updateUser = async (req, res, next) => {
         return next(new AppError(`Invalid role: ${role}`, 400));
       }
       
-      // Delete from old collection, write to new collection
-      const userData = user.toObject();
+      // Retrieve old user with password selected so we can migrate it
+      const oldUserWithPwd = await Model.findById(user._id).select('+password');
+      if (!oldUserWithPwd) return next(new AppError('User not found', 404));
+
+      // Prepare new user data
+      const userData = oldUserWithPwd.toObject();
       userData.role = role;
       
       if (name) userData.name = name.trim();
@@ -175,12 +179,18 @@ exports.updateUser = async (req, res, next) => {
       if (phone) userData.phone = phone.trim();
       if (isActive !== undefined) userData.isActive = isActive;
       
-      // Remove old doc
-      await Model.findByIdAndDelete(user._id);
-      
-      // Create new doc with same ID
+      // Validate schema compliance on the new model first
       const NewModel = getModelByRole(role);
-      user = await NewModel.create(userData);
+      const validationDoc = new NewModel(userData);
+      await validationDoc.validate();
+
+      // Delete from old collection, write to new collection via MongoDB collection driver
+      // to bypass the pre-save password-hashing hook (which would double-hash the already hashed password)
+      await Model.findByIdAndDelete(user._id);
+      await NewModel.collection.insertOne(userData);
+      
+      // Retrieve the created document back as Mongoose document
+      user = await NewModel.findById(user._id);
     } else {
       if (name) user.name = name.trim();
       if (email) user.email = email.toLowerCase().trim();

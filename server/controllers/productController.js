@@ -201,7 +201,7 @@ exports.getProductsByCategory = async (req, res, next) => {
 exports.updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, category, basePrice, sizes, isDeal, dealItems, lowStockThreshold, image, isActive } = req.body;
+    const { name, description, category, basePrice, sizes, isDeal, dealItems, stockQuantity, lowStockThreshold, image, isActive } = req.body;
 
     if (!id || id.length !== 24) {
       return next(new AppError('Invalid product ID', 400));
@@ -241,6 +241,30 @@ exports.updateProduct = async (req, res, next) => {
 
     if (isDeal !== undefined) product.isDeal = isDeal;
     if (dealItems !== undefined) product.dealItems = dealItems || [];
+
+    // Update stock quantity and log transaction if changed
+    if (stockQuantity !== undefined && Number(stockQuantity) >= 0) {
+      const newStock = Number(stockQuantity);
+      if (product.stockQuantity !== newStock) {
+        const diff = newStock - product.stockQuantity;
+        const previousStock = product.stockQuantity;
+        product.stockQuantity = newStock;
+
+        // Log manual stock modification to InventoryLog
+        const InventoryLog = require('../models/InventoryLog');
+        await InventoryLog.create({
+          product: product._id,
+          changeType: diff > 0 ? 'increase' : 'decrease',
+          quantity: Math.abs(diff),
+          reason: 'manual',
+          performedBy: req.user ? req.user.id : null,
+          previousStock,
+          newStock,
+          notes: 'Updated directly from Edit Product screen'
+        });
+      }
+    }
+
     if (lowStockThreshold !== undefined && lowStockThreshold >= 0) product.lowStockThreshold = lowStockThreshold;
     if (image !== undefined) product.image = image ? image.trim() : '';
     if (isActive !== undefined) product.isActive = isActive;

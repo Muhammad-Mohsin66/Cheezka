@@ -584,3 +584,47 @@ exports.logout = (req, res) => {
     message: 'Logged out successfully'
   });
 };
+
+/**
+ * Update current user profile
+ * PUT /api/auth/me
+ */
+exports.updateMe = async (req, res, next) => {
+  try {
+    const { name, phone, password } = req.body;
+    const role = req.user.role;
+    
+    let Model = User;
+    if (role === 'customer') Model = Customer;
+    else if (role === 'employee') Model = Employee;
+    else if (role === 'rider') Model = Rider;
+
+    const user = await Model.findById(req.user.id);
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (password) {
+      if (password.length < 8) {
+        return next(new AppError('Password must be at least 8 characters', 400));
+      }
+      user.password = password;
+    }
+
+    await user.save();
+
+    // Generate a fresh object similar to what is returned on login/me
+    const updatedUser = user.toObject();
+    delete updatedUser.password;
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    next(error);
+  }
+};

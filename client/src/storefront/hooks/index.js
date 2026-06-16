@@ -180,15 +180,82 @@ export function useNavbarProfile(enabled = true) {
         ? `<img src="${avatarUrl}" class="profile-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px;" alt="${user.name}" />`
         : `<div class="profile-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background-color: #FF6B35; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 8px;">${initials}</div>`;
 
+      if (!document.getElementById('ck-profile-dropdown-style')) {
+        const style = document.createElement('style');
+        style.id = 'ck-profile-dropdown-style';
+        style.innerHTML = `
+          .profile-dropdown {
+            position: absolute !important;
+            top: 100% !important;
+            right: 0 !important;
+            margin-top: 10px !important;
+            background-color: #fff !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+            min-width: 200px !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transform: translateY(-10px) !important;
+            transition: all 0.3s ease !important;
+            z-index: 999999 !important;
+            display: block !important;
+          }
+          .profile-dropdown.ck-open {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0) !important;
+          }
+          .ck-profile-dd__header {
+            padding: 15px 20px !important;
+            border-bottom: 1px solid #eee !important;
+            text-align: left !important;
+          }
+          .ck-profile-dd__title {
+            margin: 0 !important;
+            font-weight: bold !important;
+            color: #333 !important;
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+          }
+          .ck-profile-dd__email {
+            margin: 5px 0 0 !important;
+            font-size: 13px !important;
+            color: #777 !important;
+            line-height: 1.2 !important;
+          }
+          .profile-dropdown a, 
+          .profile-dropdown button {
+            display: block !important;
+            padding: 12px 20px !important;
+            color: #555 !important;
+            text-decoration: none !important;
+            background: none !important;
+            border: none !important;
+            width: 100% !important;
+            text-align: left !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            transition: background 0.2s !important;
+            font-family: inherit !important;
+          }
+          .profile-dropdown a:hover, 
+          .profile-dropdown button:hover {
+            background-color: #f9f9f9 !important;
+            color: #FF6B35 !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
       loginItem.innerHTML =
         `<div style="display: flex; align-items: center; gap: 16px; position: relative;">` +
         `<div id="navbar-bell-container"></div>` +
         `<div style="position: relative; display: inline-block;">` +
-        `<button id="profile-btn" class="profile-btn ck-nav-cta" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
+        `<button class="profile-btn ck-nav-cta" onclick="event.preventDefault(); event.stopPropagation(); const dd = this.nextElementSibling; if(dd) { document.querySelectorAll('.profile-dropdown').forEach(d => { if(d !== dd) d.classList.remove('ck-open'); }); dd.classList.toggle('ck-open'); }" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
         avatarHtml +
-        `<span id="profile-email" style="margin-left: 4px;">${(user.name || user.email.split('@')[0]).replace(/[<>&"']/g, '')}</span>` +
+        `<span style="margin-left: 4px;">${(user.name || user.email.split('@')[0]).replace(/[<>&"']/g, '')}</span>` +
         `</button>` +
-        `<div id="profile-dropdown" class="profile-dropdown">` +
+        `<div class="profile-dropdown">` +
         `<div class="ck-profile-dd__header">` +
         `<p class="ck-profile-dd__title">${(user.name || 'Account').replace(/[<>&"']/g, '')}</p>` +
         `<p class="ck-profile-dd__email">${(user.email || '').replace(/[<>&"']/g, '')}</p>` +
@@ -200,18 +267,14 @@ export function useNavbarProfile(enabled = true) {
         `</div>` +
         `</div>`;
 
-      const profileBtn = document.getElementById('profile-btn');
-      const profileDropdown = document.getElementById('profile-dropdown');
-      const logoutBtn = document.getElementById('logout-btn');
+      const logoutBtns = loginItem.querySelectorAll('#logout-btn');
 
       const closeHandler = (e) => {
-        if (profileDropdown && !profileDropdown.contains(e.target) && profileBtn && !profileBtn.contains(e.target)) {
-          profileDropdown.classList.remove('ck-open');
-        }
-      };
-      const toggleHandler = (e) => {
-        e.stopPropagation();
-        profileDropdown?.classList.toggle('ck-open');
+        document.querySelectorAll('.profile-dropdown.ck-open').forEach(dd => {
+          if (!dd.parentElement.contains(e.target)) {
+            dd.classList.remove('ck-open');
+          }
+        });
       };
       const logoutHandler = (e) => {
         e.preventDefault();
@@ -219,15 +282,13 @@ export function useNavbarProfile(enabled = true) {
         navigate('/login');
       };
 
-      profileBtn?.addEventListener('click', toggleHandler);
-      logoutBtn?.addEventListener('click', logoutHandler);
+      logoutBtns.forEach(btn => btn.addEventListener('click', logoutHandler));
       document.addEventListener('click', closeHandler);
 
       loginItem.classList.add('ck-pos-rel');
 
       return () => {
-        profileBtn?.removeEventListener('click', toggleHandler);
-        logoutBtn?.removeEventListener('click', logoutHandler);
+        logoutBtns.forEach(btn => btn.removeEventListener('click', logoutHandler));
         document.removeEventListener('click', closeHandler);
       };
     } else {

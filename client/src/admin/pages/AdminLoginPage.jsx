@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      authLogin(loggedInUser);
+      authLogin(loggedInUser, token);
       setStatus({ message: 'Login successful! Redirecting…', type: 'success' });
       setTimeout(() => navigate(getAdminPostAuthRedirectPath(loggedInUser), { replace: true }), 700);
     } catch {

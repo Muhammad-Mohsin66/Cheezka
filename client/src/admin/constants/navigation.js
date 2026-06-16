@@ -78,6 +78,7 @@ export const ADMIN_MENU = NAV_SECTIONS.flatMap((s) => s.items);
 export const EMPLOYEE_MENU = [
   { label: 'Dashboard', path: '/employee/dashboard', icon: '📊' },
   { label: 'Orders', path: '/employee/orders', icon: '🛒' },
+  { label: 'Payments', path: '/employee/payments', icon: '💳' },
 ];
 
 export const RIDER_MENU = [

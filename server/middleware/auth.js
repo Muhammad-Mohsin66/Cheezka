@@ -9,12 +9,12 @@ const protect = async (req, res, next) => {
   try {
     let token;
 
-    // Get token from cookies or headers
+    // Get token from headers or cookies (prioritize headers for tab isolation)
     const isStaffRoute = req.headers['x-session-type'] === 'staff';
-    if (req.cookies && (req.cookies.customer_token || req.cookies.staff_token)) {
-      token = isStaffRoute ? (req.cookies.staff_token || req.cookies.customer_token) : (req.cookies.customer_token || req.cookies.staff_token);
-    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
+    } else if (!isStaffRoute && req.cookies && req.cookies.customer_token) {
+      token = req.cookies.customer_token;
     }
 
     if (!token) {

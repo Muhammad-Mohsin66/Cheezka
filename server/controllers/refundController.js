@@ -6,6 +6,7 @@ const Customer = require('../models/Customer');
 const notificationService = require('../services/notificationService');
 const StatusLogService = require('../services/statusLogService');
 const AppError = require('../utils/AppError');
+const { createAuditEntry } = require('./auditLogController');
 
 /**
  * CUSTOMER ACTIONS
@@ -318,6 +319,9 @@ exports.approveRefund = async (req, res) => {
     );
   }
 
+  // Create Audit Log
+  await createAuditEntry(req, 'update', 'Refund', refund._id, `Status: Approved (Amt: Rs. ${refund.amount})`);
+
   res.status(200).json({
     success: true,
     message: 'Refund approved successfully. Order status updated to "Refund Requested".',
@@ -386,6 +390,9 @@ exports.rejectRefund = async (req, res) => {
       `Your refund request has been rejected. Reason: ${adminNote.trim()}. Please contact support for more information.`
     );
   }
+
+  // Create Audit Log
+  await createAuditEntry(req, 'update', 'Refund', refund._id, `Status: Rejected (Reason: ${adminNote.trim()})`);
 
   res.status(200).json({
     success: true,
@@ -489,6 +496,9 @@ exports.markAsProcessed = async (req, res) => {
       `Your refund of ₹${refund.amount} has been processed. The amount will reflect in your account within 3-5 business days.`
     );
   }
+
+  // Create Audit Log
+  await createAuditEntry(req, 'update', 'Refund', refund._id, `Status: Processed (Amt: Rs. ${refund.amount})`);
 
   res.status(200).json({
     success: true,

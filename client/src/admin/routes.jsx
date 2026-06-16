@@ -49,7 +49,7 @@ export function AdminRoutes() {
 
       {/* ── Orders & Billing ── */}
       <Route path="orders" element={<AdminGuard allowedRoles={['admin', 'employee']}>{withLayout(<OrdersManagement />)}</AdminGuard>} />
-      <Route path="payments" element={<AdminGuard allowedRoles={['admin']}>{withLayout(<PaymentsPage />)}</AdminGuard>} />
+      <Route path="payments" element={<AdminGuard allowedRoles={['admin', 'employee']}>{withLayout(<PaymentsPage />)}</AdminGuard>} />
       <Route path="refunds" element={<AdminGuard allowedRoles={['admin']}>{withLayout(<RefundsPage />)}</AdminGuard>} />
 
       {/* ── Catalog ── */}
@@ -99,6 +99,7 @@ export function EmployeeRoutes() {
     <Routes>
       <Route path="dashboard" element={<AdminGuard allowedRoles={['employee', 'admin']}>{withLayout(<Dashboard />)}</AdminGuard>} />
       <Route path="orders" element={<AdminGuard allowedRoles={['employee', 'admin']}>{withLayout(<OrdersManagement />)}</AdminGuard>} />
+      <Route path="payments" element={<AdminGuard allowedRoles={['employee', 'admin']}>{withLayout(<PaymentsPage />)}</AdminGuard>} />
       <Route index element={<Navigate to="/employee/dashboard" replace />} />
       <Route path="*" element={<Unauthorized />} />
     </Routes>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validateRegister, validateLogin } = require('../middleware/validate');
 const User = require('../models/User');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
@@ -23,8 +24,8 @@ const getModelByRole = (role) => {
 };
 
 // Public routes
-router.post('/register', authController.registerUser);
-router.post('/login', authController.loginUser);
+router.post('/register', validateRegister, authController.registerUser);
+router.post('/login', validateLogin, authController.loginUser);
 router.post('/logout', authController.logout);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/request-reset', authController.requestPasswordReset);
@@ -51,6 +52,8 @@ router.get('/me', protect, async (req, res, next) => {
     next(error);
   }
 });
+
+router.put('/me', protect, authController.updateMe);
 
 // Admin and Employee - Get all users
 router.get('/users', protect, authorizeRoles('admin', 'employee'), async (req, res, next) => {

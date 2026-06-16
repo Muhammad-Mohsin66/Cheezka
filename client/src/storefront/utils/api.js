@@ -99,3 +99,11 @@ export async function getMyRefunds() {
   const response = await fetch(`${API_BASE}/refunds/my-refunds`, getFetchOptions());
   return parseJson(response);
 }
+
+export async function updateProfile(data) {
+  const response = await fetch(`${API_BASE}/auth/me`, getFetchOptions({
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }));
+  return parseJson(response);
+}
