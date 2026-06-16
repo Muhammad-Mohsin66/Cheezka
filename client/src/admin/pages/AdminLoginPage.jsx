@@ -41,6 +41,7 @@ export default function AdminLoginPage() {
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -65,7 +66,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      authLogin(loggedInUser, token);
+      authLogin(loggedInUser);
       setStatus({ message: 'Login successful! Redirecting…', type: 'success' });
       setTimeout(() => navigate(getAdminPostAuthRedirectPath(loggedInUser), { replace: true }), 700);
     } catch {

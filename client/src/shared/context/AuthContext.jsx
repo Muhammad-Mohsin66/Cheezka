@@ -9,12 +9,10 @@ const STAFF_ROLES = ['admin', 'employee', 'rider'];
 export const AuthProvider = ({ children }) => {
   // Storefront customer session states
   const [customerUser, setCustomerUser] = useState(null);
-  const [customerToken, setCustomerToken] = useState(localStorage.getItem('authToken') || null);
   const [customerIsAuthenticated, setCustomerIsAuthenticated] = useState(false);
 
   // Staff (admin/employee/rider) session states
   const [staffUser, setStaffUser] = useState(null);
-  const [staffToken, setStaffToken] = useState(localStorage.getItem('staffAuthToken') || null);
   const [staffIsAuthenticated, setStaffIsAuthenticated] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -24,57 +22,38 @@ export const AuthProvider = ({ children }) => {
   // Initialize auth on mount
   useEffect(() => {
     const loadUsers = async () => {
-      const savedCustomerToken = localStorage.getItem('authToken');
-      const savedStaffToken = localStorage.getItem('staffAuthToken');
-
-      let customerLoaded = false;
-      let staffLoaded = false;
-
-      // 1. Load customer
-      if (savedCustomerToken) {
-        try {
-          // Explicitly pass Authorization header to bypass request interceptor location checks
-          const response = await api.get('/auth/me', {
-            headers: { Authorization: `Bearer ${savedCustomerToken}` }
-          });
-          const userData = response.data.user || response.data.data || null;
-          if (userData) {
-            setCustomerUser(userData);
-            setCustomerToken(savedCustomerToken);
-            setCustomerIsAuthenticated(true);
-            localStorage.setItem('cheezka_user', JSON.stringify(userData));
-            customerLoaded = true;
-          }
-        } catch (error) {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('cheezka_user');
-          setCustomerToken(null);
-          setCustomerUser(null);
-          setCustomerIsAuthenticated(false);
+      // 1. Try to load customer session
+      try {
+        const response = await api.get('/auth/me', {
+          headers: { 'X-Session-Type': 'customer' }
+        });
+        const userData = response.data.user || response.data.data || null;
+        if (userData && !STAFF_ROLES.includes(userData.role)) {
+          setCustomerUser(userData);
+          setCustomerIsAuthenticated(true);
+          localStorage.setItem('cheezka_user', JSON.stringify(userData));
         }
+      } catch (error) {
+        localStorage.removeItem('cheezka_user');
+        setCustomerUser(null);
+        setCustomerIsAuthenticated(false);
       }
 
-      // 2. Load staff
-      if (savedStaffToken) {
-        try {
-          const response = await api.get('/auth/me', {
-            headers: { Authorization: `Bearer ${savedStaffToken}` }
-          });
-          const userData = response.data.user || response.data.data || null;
-          if (userData) {
-            setStaffUser(userData);
-            setStaffToken(savedStaffToken);
-            setStaffIsAuthenticated(true);
-            localStorage.setItem('staffUser', JSON.stringify(userData));
-            staffLoaded = true;
-          }
-        } catch (error) {
-          localStorage.removeItem('staffAuthToken');
-          localStorage.removeItem('staffUser');
-          setStaffToken(null);
-          setStaffUser(null);
-          setStaffIsAuthenticated(false);
+      // 2. Try to load staff session
+      try {
+        const response = await api.get('/auth/me', {
+          headers: { 'X-Session-Type': 'staff' }
+        });
+        const userData = response.data.user || response.data.data || null;
+        if (userData && STAFF_ROLES.includes(userData.role)) {
+          setStaffUser(userData);
+          setStaffIsAuthenticated(true);
+          localStorage.setItem('staffUser', JSON.stringify(userData));
         }
+      } catch (error) {
+        localStorage.removeItem('staffUser');
+        setStaffUser(null);
+        setStaffIsAuthenticated(false);
       }
 
       setLoading(false);
@@ -83,35 +62,37 @@ export const AuthProvider = ({ children }) => {
     loadUsers();
   }, []);
 
-  const login = (userData, tokenVal) => {
+  const login = (userData) => {
     const isStaff = STAFF_ROLES.includes(userData?.role);
     if (isStaff) {
-      localStorage.setItem('staffAuthToken', tokenVal);
       localStorage.setItem('staffUser', JSON.stringify(userData));
-      setStaffToken(tokenVal);
       setStaffUser(userData);
       setStaffIsAuthenticated(true);
     } else {
-      localStorage.setItem('authToken', tokenVal);
       localStorage.setItem('cheezka_user', JSON.stringify(userData));
-      setCustomerToken(tokenVal);
       setCustomerUser(userData);
       setCustomerIsAuthenticated(true);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     const isStaffRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/rider');
+    
+    // Call backend to clear cookie
+    try {
+      await api.post('/auth/logout', {}, {
+        headers: { 'X-Session-Type': isStaffRoute ? 'staff' : 'customer' }
+      });
+    } catch (e) {
+      console.error('Logout request failed', e);
+    }
+
     if (isStaffRoute) {
-      localStorage.removeItem('staffAuthToken');
       localStorage.removeItem('staffUser');
-      setStaffToken(null);
       setStaffUser(null);
       setStaffIsAuthenticated(false);
     } else {
-      localStorage.removeItem('authToken');
       localStorage.removeItem('cheezka_user');
-      setCustomerToken(null);
       setCustomerUser(null);
       setCustomerIsAuthenticated(false);
     }
@@ -132,12 +113,10 @@ export const AuthProvider = ({ children }) => {
   const isStaffRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/rider');
 
   const user = isStaffRoute ? staffUser : customerUser;
-  const token = isStaffRoute ? staffToken : customerToken;
   const isAuthenticated = isStaffRoute ? staffIsAuthenticated : customerIsAuthenticated;
 
   const value = {
     user,
-    token,
     isAuthenticated,
     loading,
     login,

@@ -10,10 +10,21 @@ async function parseJson(response) {
 }
 
 function getAuthHeaders() {
-  const token = localStorage.getItem('authToken');
-  return token
-    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-    : { 'Content-Type': 'application/json' };
+  return { 
+    'Content-Type': 'application/json',
+    'X-Session-Type': 'customer' 
+  };
+}
+
+function getFetchOptions(options = {}) {
+  return {
+    ...options,
+    credentials: 'include',
+    headers: {
+      ...getAuthHeaders(),
+      ...(options.headers || {})
+    }
+  };
 }
 
 export const endpoints = {
@@ -31,34 +42,28 @@ export async function checkHealth() {
 }
 
 export async function listOrders() {
-  const response = await fetch(endpoints.ORDERS_LIST, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(endpoints.ORDERS_LIST, getFetchOptions());
   return parseJson(response);
 }
 
 export async function updateOrderStatus(orderId, status) {
-  const response = await fetch(endpoints.orderStatus(orderId), {
+  const response = await fetch(endpoints.orderStatus(orderId), getFetchOptions({
     method: 'PATCH',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ orderStatus: status }),
-  });
+  }));
   return parseJson(response);
 }
 
 export async function createOrder(payload) {
-  const response = await fetch(endpoints.ORDERS_CREATE, {
+  const response = await fetch(endpoints.ORDERS_CREATE, getFetchOptions({
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
-  });
+  }));
   return parseJson(response);
 }
 
 export async function getOrderDetails(orderId) {
-  const response = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}/details`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}/details`, getFetchOptions());
   return parseJson(response);
 }
 
@@ -83,17 +88,14 @@ export async function getBankAccounts() {
 }
 
 export async function requestRefund(orderId, reason) {
-  const response = await fetch(`${API_BASE}/refunds/request`, {
+  const response = await fetch(`${API_BASE}/refunds/request`, getFetchOptions({
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ orderId, reason }),
-  });
+  }));
   return parseJson(response);
 }
 
 export async function getMyRefunds() {
-  const response = await fetch(`${API_BASE}/refunds/my-refunds`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(`${API_BASE}/refunds/my-refunds`, getFetchOptions());
   return parseJson(response);
 }

@@ -126,7 +126,8 @@ export default function CheckoutPage() {
   // Pricing calculations (dynamic using active delivery zone base charge)
   const subtotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
   const selectedZone = deliveryZones.find((z) => z._id === selectedZoneId);
-  const deliveryFee = selectedZone ? selectedZone.baseCharge : 100; // fallback to Rs. 100
+  const fallbackCharge = settings.DELIVERY_BASE_CHARGE !== undefined ? Number(settings.DELIVERY_BASE_CHARGE) : 100;
+  const deliveryFee = selectedZone ? selectedZone.baseCharge : fallbackCharge;
   const taxRate = settings.TAX_PERCENTAGE / 100;
   const tax = Math.round(subtotal * taxRate);
   const grandTotal = subtotal + deliveryFee + tax;

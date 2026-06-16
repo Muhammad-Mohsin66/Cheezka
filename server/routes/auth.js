@@ -25,6 +25,7 @@ const getModelByRole = (role) => {
 // Public routes
 router.post('/register', authController.registerUser);
 router.post('/login', authController.loginUser);
+router.post('/logout', authController.logout);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/request-reset', authController.requestPasswordReset);
 router.post('/reset-password', authController.resetPassword);

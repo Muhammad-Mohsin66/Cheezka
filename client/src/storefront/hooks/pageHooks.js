@@ -63,6 +63,11 @@ export const getImageUrl = (prod) => {
     'Zinger Paratha Roll': 'paratha_roll.png',
     'Zinger Paratha Cheeze': 'paratha_roll.png',
     'Chicken Paratha': 'paratha_roll.png',
+    'Coca-Cola': 'cocacola.png',
+    'Pepsi': 'pepsi.png',
+    'Sprite': 'sprite.png',
+    'Fanta': 'fanta.png',
+    '7 Up': '7up.png',
   };
   if (mapping[prod.name]) return `/images/menu/${mapping[prod.name]}`;
 
@@ -124,6 +129,7 @@ export function useLoginPage() {
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -135,7 +141,7 @@ export function useLoginPage() {
       }
 
       const guestCart = preserveGuestCartThroughAuth();
-      authLogin({ ...data.user, rememberMe }, data.token);
+      authLogin({ ...data.user, rememberMe });
       localStorage.removeItem('cheezka_login_form');
       if (guestCart.length) {
         persistCart(guestCart);
@@ -222,6 +228,7 @@ export function useSignupPage() {
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone: phoneVal, password }),
       });
@@ -233,7 +240,7 @@ export function useSignupPage() {
       }
 
       const guestCart = preserveGuestCartThroughAuth();
-      authLogin(data.user, data.token);
+      authLogin(data.user);
       if (guestCart.length) {
         persistCart(guestCart);
       }
@@ -550,6 +557,17 @@ export function useShopPage() {
         if (!container) return;
 
         const activeCats = categories.filter(c => c.isActive);
+        
+        // Custom order: Burgers, Pizza, Pasta, Drinks
+        const customOrder = ["Burgers", "Pizza", "Pasta", "Drinks"];
+        activeCats.sort((a, b) => {
+          const indexA = customOrder.indexOf(a.name);
+          const indexB = customOrder.indexOf(b.name);
+          if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
+          if (indexA === -1) return 1; // Put unknown categories at the end
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
         const activeProds = products.filter(p => p.isActive);
 
         if (activeProds.length === 0) {
@@ -997,8 +1015,10 @@ export function useShopPage() {
 // Pages page (Special Deals)
 // ─────────────────────────────────────────────
 export function usePagesPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dealsVersion, setDealsVersion] = useState(0);
+  const [dealsList, setDealsList] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -1007,6 +1027,7 @@ export function usePagesPage() {
         const res = await getDeals();
         if (!active) return;
         const deals = res.data || res || [];
+        setDealsList(deals);
         const container = document.getElementById('dynamic-deals-container');
         if (!container) return;
 
@@ -1043,7 +1064,7 @@ export function usePagesPage() {
                   ${deal.products && deal.products.length > 0 && deal.description ? `<p class="deal-desc" style="color:#777; margin-bottom:12px; font-size:0.95rem;">${deal.description}</p>` : ''}
                   ${itemsList ? `<ul class="deal-items" style="list-style:disc; padding-left:20px; margin-bottom:15px;">${itemsList}</ul>` : ''}
                   <div class="deal-price">Rs. ${deal.dealPrice}/-</div>
-                  <a href="contact.html" class="deal-btn">Order This Deal</a>
+                  <button class="deal-btn pages-add-deal-btn" data-deal-id="${deal._id}" data-deal-name="${deal.title}" style="border:none; cursor:pointer;" role="button">Order This Deal</button>
                 </div>
               </div>
             </div>
@@ -1072,6 +1093,44 @@ export function usePagesPage() {
     loadDeals();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const addToCart = (dealId, name, price) => {
+      // Clear the cart so only the newly selected deal is shown
+      const nextCart = [{ product: dealId, name, size: 'Deal', price, qty: 1 }];
+      persistCart(nextCart);
+      navigate('/shop?cart=1');
+    };
+
+    const buttons = document.querySelectorAll('.pages-add-deal-btn');
+    const handlers = [];
+
+    buttons.forEach((btn) => {
+      const handler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dealId = btn.getAttribute('data-deal-id');
+        const name = btn.getAttribute('data-deal-name');
+
+        const deal = dealsList.find(d => d._id === dealId);
+        if (!deal) return;
+
+        const price = deal.dealPrice || 0;
+        addToCart(dealId, name, price);
+      };
+
+      btn.addEventListener('click', handler);
+      handlers.push({ btn, handler });
+    });
+
+    return () => {
+      handlers.forEach(({ btn, handler }) => {
+        btn.removeEventListener('click', handler);
+      });
+    };
+  }, [dealsVersion, loading, dealsList, navigate]);
 }
 
 // ─────────────────────────────────────────────
@@ -1104,7 +1163,7 @@ export function useHomePage() {
         const container = document.getElementById('dynamic-home-products');
         if (!container) return;
 
-        const activeProds = products.filter(p => p.isActive).slice(0, 6);
+        const activeProds = products.filter(p => p.isActive && p.category && p.category.name !== 'Drinks').slice(0, 6);
 
         if (activeProds.length === 0) {
           container.innerHTML = `
@@ -1134,8 +1193,8 @@ export function useHomePage() {
           html += `
             <div class="col-lg-4 col-md-4 col-sm-6 productsubtitlenone product text-center mb-4">   
               <a href="/shop" class="woocommerce-LoopProduct-link woocommerce-loop-product__link"> 
-                <div class="wrappimage" style="height: 250px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fcf8f5; border-radius: 8px;">
-                  <img decoding="async" width="500" height="500" src="${getImageUrl(prod)}" class="attachment-woocommerce_thumbnail size-woocommerce_thumbnail" alt="${prod.name}" style="max-height: 100%; max-width: 100%; object-fit: contain;" />
+                <div class="wrappimage">
+                  <img decoding="async" width="500" height="500" src="${getImageUrl(prod)}" class="attachment-woocommerce_thumbnail size-woocommerce_thumbnail" alt="${prod.name}" />
                 </div>
                 <div class="star-rating" role="img" aria-label="Rated 5.00 out of 5"><span class="ck-w-100">Rated <strong class="rating">5.00</strong> out of 5</span></div>
                 <h2 class="woocommerce-loop-product__title" style="font-family:'Nunito Sans',sans-serif; font-weight: 800; color:#1b2a49;">${prod.name}</h2>

@@ -22,7 +22,6 @@
             padding: 30px 25px;
             margin-bottom: 30px;
             border-top: 4px solid #fbb731;
-            height: 100%;
         }
         .contact-block h3 {
             color: #0C4C7B;
@@ -131,7 +130,7 @@
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 5px 24px rgba(0,0,0,0.15);
-            margin-bottom: 60px;
+            margin-bottom: 0px;
         }
         .map-wrap iframe {
             width: 100%;

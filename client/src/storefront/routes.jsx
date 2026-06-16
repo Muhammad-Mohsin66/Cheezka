@@ -9,7 +9,6 @@ import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
-import PagesPage from './pages/PagesPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -126,14 +125,6 @@ export default function StorefrontRoutes() {
           </RouteFrame>
         }
       />
-      <Route
-        path="/pages"
-        element={
-          <RouteFrame bodyClass="page lines" title="Special Deals – Cheezka Street Food">
-            <PagesPage />
-          </RouteFrame>
-        }
-      />
 
       {/* Auth */}
       <Route
@@ -246,7 +237,7 @@ export default function StorefrontRoutes() {
       <Route path="/shop.html" element={<Navigate to="/shop" replace />} />
       <Route path="/about.html" element={<Navigate to="/about" replace />} />
       <Route path="/contact.html" element={<Navigate to="/contact" replace />} />
-      <Route path="/pages.html" element={<Navigate to="/pages" replace />} />
+      <Route path="/pages.html" element={<Navigate to="/" replace />} />
       <Route path="/login.html" element={<Navigate to="/login" replace />} />
       <Route path="/signup.html" element={<Navigate to="/signup" replace />} />
       <Route path="/dashboard.html" element={<Navigate to="/dashboard" replace />} />

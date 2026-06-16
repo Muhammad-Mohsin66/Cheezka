@@ -12,6 +12,18 @@ const {
 } = require('../config/email');
 const crypto = require('crypto');
 
+// Helper to set cookie based on role
+const setTokenCookie = (res, token, role) => {
+  const cookieName = role === 'customer' ? 'customer_token' : 'staff_token';
+  const options = {
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  };
+  res.cookie(cookieName, token, options);
+};
+
 const findUserByEmail = async (email) => {
   const norm = email.toLowerCase().trim();
   return await User.findOne({ email: norm }) ||
@@ -122,6 +134,7 @@ exports.registerUser = async (req, res, next) => {
 
     // Generate JWT token
     const token = generateToken(user._id, user.role);
+    setTokenCookie(res, token, user.role);
 
     res.status(201).json({
       success: true,
@@ -170,6 +183,7 @@ exports.loginUser = async (req, res, next) => {
 
     // Generate JWT token
     const token = generateToken(user._id, user.role);
+    setTokenCookie(res, token, user.role);
 
     res.status(200).json({
       success: true,
@@ -380,6 +394,7 @@ exports.verifyOTP = async (req, res, next) => {
 
     // Generate JWT token
     const token = generateToken(user._id, user.role);
+    setTokenCookie(res, token, user.role);
 
     res.status(200).json({
       success: true,
@@ -547,4 +562,25 @@ exports.resetComplete = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * Logout user by clearing cookies
+ * POST /api/auth/logout
+ */
+exports.logout = (req, res) => {
+  const isStaffRoute = req.headers['x-session-type'] === 'staff';
+  const cookieName = isStaffRoute ? 'staff_token' : 'customer_token';
+  
+  res.cookie(cookieName, 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully'
+  });
 };

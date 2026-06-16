@@ -54,3 +54,6 @@ Password: rider123
 Customer:
 Email: customer1@cheezka.com
 Password: customer123
+
+Map Location:
+Coordinates: 30.542772,73.068013

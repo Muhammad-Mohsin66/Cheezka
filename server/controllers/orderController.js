@@ -26,7 +26,7 @@ const AppError = require('../utils/AppError');
  * - Create order with "Pending" status
  */
 exports.placeOrder = async (req, res) => {
-  const { orderItems, shippingAddress, phoneNumber, paymentMethod, deliveryCharge = 0 } = req.body;
+  const { orderItems, shippingAddress, phoneNumber, paymentMethod, deliveryCharge } = req.body;
 
   // Validation
   if (!orderItems || orderItems.length === 0) {
@@ -96,12 +96,14 @@ exports.placeOrder = async (req, res) => {
   }
 
   // Fetch dynamic settings
-  const settings = await SystemSetting.find({ key: { $in: ['MIN_ORDER_VALUE', 'TAX_PERCENTAGE'] } });
+  const settings = await SystemSetting.find({ key: { $in: ['MIN_ORDER_VALUE', 'TAX_PERCENTAGE', 'DELIVERY_BASE_CHARGE'] } });
   const minOrderSetting = settings.find(s => s.key === 'MIN_ORDER_VALUE');
   const taxSetting = settings.find(s => s.key === 'TAX_PERCENTAGE');
+  const deliverySetting = settings.find(s => s.key === 'DELIVERY_BASE_CHARGE');
   
   const minOrderValue = minOrderSetting ? Number(minOrderSetting.value) : 0;
   const taxPercentage = taxSetting ? Number(taxSetting.value) : 0;
+  const defaultDeliveryCharge = deliverySetting && deliverySetting.value !== undefined ? Number(deliverySetting.value) : 100;
 
   if (minOrderValue > 0 && totalAmount < minOrderValue) {
     throw new AppError(`Minimum order value is Rs. ${minOrderValue}. Please add more items.`, 400);
@@ -123,7 +125,8 @@ exports.placeOrder = async (req, res) => {
   }
 
   // Calculate grand total
-  const grandTotal = totalAmount + deliveryCharge + taxAmount;
+  const finalDeliveryCharge = deliveryCharge !== undefined ? Number(deliveryCharge) : defaultDeliveryCharge;
+  const grandTotal = totalAmount + finalDeliveryCharge + taxAmount;
 
   // Create order
   const order = await Order.create({
@@ -133,7 +136,7 @@ exports.placeOrder = async (req, res) => {
     phoneNumber,
     totalAmount,
     taxAmount,
-    deliveryCharge,
+    deliveryCharge: finalDeliveryCharge,
     grandTotal,
     paymentMethod,
     paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Pending',
