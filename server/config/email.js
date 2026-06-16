@@ -1,23 +1,7 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-/**
- * Create email transporter for sending emails via Gmail
- * Configure environment variables:
- * - GMAIL_EMAIL: Your Gmail address
- * - GMAIL_PASSWORD: Your Gmail app password (not regular password)
- * For Gmail, use App Passwords: https://myaccount.google.com/apppasswords
- */
-const createEmailTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true' ? true : false,
-    auth: {
-      user: process.env.EMAIL_USER || process.env.GMAIL_EMAIL,
-      pass: process.env.EMAIL_PASSWORD || process.env.GMAIL_PASSWORD,
-    },
-  });
-};
+// Initialize Resend with the API key from environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Send email
@@ -28,19 +12,23 @@ const createEmailTransporter = () => {
  */
 const sendEmail = async (to, subject, html) => {
   try {
-    const transporter = createEmailTransporter();
-
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.GMAIL_EMAIL,
+    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    
+    const { data, error } = await resend.emails.send({
+      from: `Cheezka <${fromEmail}>`,
       to,
       subject,
       html,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error('Resend Email Error:', error);
+      return { success: false, error: error.message };
+    }
+
     return {
       success: true,
-      messageId: info.messageId,
+      messageId: data.id,
     };
   } catch (error) {
     console.error('Email sending failed:', error);
