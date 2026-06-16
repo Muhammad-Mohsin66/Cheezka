@@ -1,5 +1,5 @@
 import './index.css';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from './shared/context/AuthContext';
 import { AdminRoutes, EmployeeRoutes, RiderRoutes } from './admin/routes';
 import StorefrontRoutes from './storefront/routes';
@@ -13,9 +13,14 @@ import Unauthorized from './shared/components/Unauthorized';
  *  • /*          → Storefront (customer-facing)
  */
 export default function App() {
+  const hostname = window.location.hostname;
+  const isStaffSubdomain = hostname.startsWith('admin.') || hostname.startsWith('employee.') || hostname.startsWith('rider.');
+
   return (
     <AuthProvider>
       <Routes>
+        {isStaffSubdomain && <Route path="/" element={<Navigate to="/admin/login" replace />} />}
+        
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         <Route path="/admin/*" element={<AdminRoutes />} />
