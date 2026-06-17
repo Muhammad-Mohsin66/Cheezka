@@ -3368,8 +3368,8 @@ h2.maintitle.white {
   }
 }
 h3.maintitle {
-  margin-bottom: 50;
-  padding: bottom: 30;
+  margin-bottom: 50px;
+  padding-bottom: 30px;
   font-size: 44px;
   font-weight: 800;
   line-height: 56px;
