@@ -355,34 +355,35 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .notification-dropdown {
-    width: calc(100vw - 2rem);
-    max-width: 320px;
-    right: auto;
-    left: 0;
-    max-height: 500px;
+    width: 300px !important;
+    max-width: 90vw !important;
+    right: auto !important;
+    left: 0 !important;
+    max-height: 500px !important;
   }
 
   .notifications-list {
-    max-height: 320px;
+    max-height: 320px !important;
   }
 
   .notification-item {
-    padding: 0.875rem;
+    padding: 0.875rem !important;
   }
 
   .bell-button {
-    font-size: 1.25rem;
-    padding: 0.25rem;
+    font-size: 1.25rem !important;
+    padding: 0.25rem !important;
   }
 }
 
 @media (max-width: 480px) {
   .notification-dropdown {
-    width: 280px;
-    right: auto;
-    left: 0;
-    border-radius: 12px;
-    max-height: calc(100vh - 120px);
+    width: 280px !important;
+    max-width: 85vw !important;
+    right: auto !important;
+    left: 0 !important;
+    border-radius: 12px !important;
+    max-height: calc(100vh - 120px) !important;
   }
 
   .notifications-list {
