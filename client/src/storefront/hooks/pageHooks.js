@@ -37,7 +37,7 @@ export const getImageUrl = (prod) => {
     }
     const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const serverUrl = apiBase.replace('/api', '');
-    return `${serverUrl}${prod.image}`;
+    return `${serverUrl}${prod.image.startsWith('/') ? '' : '/'}${prod.image}`;
   }
   const mapping = {
     'Zinger Burger': 'zinger_burger.png',

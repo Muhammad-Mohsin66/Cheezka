@@ -312,6 +312,14 @@ export default function OrdersManagement() {
     { label: 'Assign Rider', icon: '🏍️', onClick: handleOpenAssignModal }
   ];
 
+  const getPaymentImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const serverUrl = apiBase.replace('/api', '');
+    return `${serverUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -439,13 +447,13 @@ export default function OrdersManagement() {
                         </div>
                         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                           <a 
-                            href={selectedOrderPayment.screenshot.startsWith('http') ? selectedOrderPayment.screenshot : `${import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') : 'http://localhost:5001'}${selectedOrderPayment.screenshot}`} 
+                            href={getPaymentImageUrl(selectedOrderPayment.screenshot)} 
                             target="_blank" 
                             rel="noreferrer" 
                             title="Click to view full image"
                           >
                             <img 
-                              src={selectedOrderPayment.screenshot.startsWith('http') ? selectedOrderPayment.screenshot : `${import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') : 'http://localhost:5001'}${selectedOrderPayment.screenshot}`} 
+                              src={getPaymentImageUrl(selectedOrderPayment.screenshot)} 
                               alt="Payment proof screenshot" 
                               style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer' }}
                             />
@@ -770,9 +778,9 @@ export default function OrdersManagement() {
                 <span><strong>Uploaded:</strong> {new Date(selectedOrderPayment.createdAt).toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
-                <a href={selectedOrderPayment.screenshot} target="_blank" rel="noreferrer" title="Click to view full image">
+                <a href={getPaymentImageUrl(selectedOrderPayment.screenshot)} target="_blank" rel="noreferrer" title="Click to view full image">
                   <img 
-                    src={selectedOrderPayment.screenshot} 
+                    src={getPaymentImageUrl(selectedOrderPayment.screenshot)} 
                     alt="Payment proof screenshot" 
                     style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer', backgroundColor: '#f9f9f9' }}
                   />
