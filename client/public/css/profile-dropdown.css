@@ -69,3 +69,11 @@
 .ck-pos-rel {
   position: relative !important;
 }
+
+@media (max-width: 991px) {
+  .profile-dropdown {
+    right: auto;
+    left: 0;
+    min-width: 250px;
+  }
+}

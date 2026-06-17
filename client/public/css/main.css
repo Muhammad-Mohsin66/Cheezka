@@ -1632,7 +1632,7 @@ body.admin-bar .full-screen2 .nav-button {
 }
 @media all and (max-width: 767px) {
   .hero-wrapper {
-    height: 100%;
+    height: auto;
   }
 }
 .hero {
@@ -1643,7 +1643,7 @@ body.admin-bar .full-screen2 .nav-button {
 }
 @media all and (max-width: 767px) {
   .hero {
-    height: 800px;
+    height: 950px;
   }
 }
 .hero-bg {
@@ -1680,7 +1680,7 @@ body.admin-bar .full-screen2 .nav-button {
     width: 100%;
     max-width: 100%;
     left: 0%;
-    height: auto;
+    height: 350px;
   }
 }
 .hero-bg .hero-bg-text {
@@ -1693,7 +1693,8 @@ body.admin-bar .full-screen2 .nav-button {
 @media all and (max-width: 767px) {
   .hero-bg .hero-bg-text {
     position: relative;
-    padding: 48px 12px 24px 12px;
+    padding: 180px 15px 24px 15px;
+    text-align: center;
   }
 }
 .hero-bg .hero-bg-text h2 {
@@ -1732,28 +1733,30 @@ body.admin-bar .full-screen2 .nav-button {
 @media all and (max-width: 767px) {
   .hero-image {
     position: absolute;
-    z-index: 1;
-    top: 40%;
+    z-index: 10;
+    top: 480px;
     width: 100%;
   }
   .hero-image img {
     margin-top: 0;
     margin-left: 50%;
-    max-width: 400px!important;
+    transform: translateX(-50%);
+    max-width: 85vw!important;
     width: auto;
   }
 }
 @media all and (max-width: 500px) {
   .hero-image {
     position: absolute;
-    z-index: 1;
-    top: 50%;
+    z-index: 10;
+    top: 480px;
     width: 100%;
   }
   .hero-image img {
     margin-top: 0;
     margin-left: 50%;
-    max-width: 300px!important;
+    transform: translateX(-50%);
+    max-width: 85vw!important;
     width: auto;
   }
 }
@@ -1868,7 +1871,7 @@ body.admin-bar .full-screen2 .nav-button {
 }
 @media all and (max-width: 767px) {
   .hero1-cta {
-    display: none!important;
+    display: none!important; /* will be overridden below */
   }
   .hero-text .hero-text-text {
     margin-top: 70px;
@@ -1880,9 +1883,29 @@ body.admin-bar .full-screen2 .nav-button {
     line-height: 1;
   }
   .hero-text .hero-text-text h2 {
-    font-size: 24px;
-    line-height: 30px;
+    font-size: 20px;
+    line-height: 28px;
     font-weight: 700;
+  }
+  .hero1-cta {
+    display: block!important;
+    margin-left: auto!important;
+    margin-right: auto!important;
+    margin-top: 30px!important;
+    max-width: 90%!important;
+    background: #fff;
+    padding: 10px 10px 10px 60px;
+    border-radius: 8px;
+    position: relative;
+    z-index: 5;
+  }
+  .hero-text .hero-text-text .hero1-cta img {
+    margin-top: -30px !important;
+    margin-left: -90px !important;
+    max-width: 120px !important;
+  }
+  .hero-text .hero-text-text p.hero1textsmall {
+    margin: 0 auto 20px auto;
   }
 }
 

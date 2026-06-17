@@ -942,7 +942,7 @@ export function useShopPage() {
 
           const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
           const uploadHeaders = {};
-          const token = localStorage.getItem('authToken');
+          const token = localStorage.getItem('customerToken');
           if (token) uploadHeaders['Authorization'] = `Bearer ${token}`;
 
           const uploadRes = await fetch(`${API_BASE}/payments/upload/${orderId}`, {

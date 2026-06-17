@@ -356,8 +356,9 @@
 @media (max-width: 768px) {
   .notification-dropdown {
     width: calc(100vw - 2rem);
-    max-width: 380px;
-    right: -1rem;
+    max-width: 320px;
+    right: auto;
+    left: 0;
     max-height: 500px;
   }
 
@@ -377,10 +378,11 @@
 
 @media (max-width: 480px) {
   .notification-dropdown {
-    width: 100vw;
-    right: -1.5rem;
-    border-radius: 12px 12px 0 0;
-    max-height: calc(100vh - 80px);
+    width: 280px;
+    right: auto;
+    left: 0;
+    border-radius: 12px;
+    max-height: calc(100vh - 120px);
   }
 
   .notifications-list {

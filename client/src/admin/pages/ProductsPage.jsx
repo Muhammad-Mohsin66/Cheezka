@@ -12,6 +12,12 @@ const STATUS_MAP = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const SERVER_URL = API_BASE_URL.replace('/api', '');
 
+const getImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `${SERVER_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -23,6 +29,7 @@ export default function ProductsPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', category: '', basePrice: '', stockQuantity: '', lowStockThreshold: '5', image: '', isActive: true, sizes: [{ size: 'M', price: '' }] });
   const [error, setError] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -33,12 +40,20 @@ export default function ProductsPage() {
 
     try {
       setUploadingImage(true);
-      const res = await api.post('/upload/product', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const token = sessionStorage.getItem('staffToken');
+      const res = await fetch(`${API_BASE_URL}/upload/product`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Session-Type': 'staff'
+        },
+        body: formData
       });
-      setForm((f) => ({ ...f, image: res.data.url }));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to upload image');
+      setForm((f) => ({ ...f, image: data.url }));
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to upload image');
+      setError(err.message || 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
@@ -81,9 +96,16 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filtered = products.filter((p) =>
-    p.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products
+    .filter((p) => p.name?.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => showInactive || p.isActive)
+    .sort((a, b) => {
+      const catA = a.category?.name || 'Uncategorized';
+      const catB = b.category?.name || 'Uncategorized';
+      if (catA < catB) return -1;
+      if (catA > catB) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   const openCreate = () => {
     setForm({ name: '', description: '', category: categories[0]?._id || '', basePrice: '', stockQuantity: '', lowStockThreshold: '5', image: '', isActive: true, sizes: [{ size: 'M', price: '' }] });
@@ -142,7 +164,7 @@ export default function ProductsPage() {
   };
 
   const columns = [
-    { key: 'image', label: 'Image', width: 60, render: (v) => v ? <img src={v.startsWith('http') ? v : `${SERVER_URL}${v}`} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <span style={{ fontSize: 28 }}>🍔</span> },
+    { key: 'image', label: 'Image', width: 60, render: (v) => v ? <img src={getImageUrl(v)} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <span style={{ fontSize: 28 }}>🍔</span> },
     { key: 'name', label: 'Name', render: (v) => <strong>{v}</strong> },
     { key: 'category', label: 'Category', render: (v, row) => row.category?.name || '—' },
     { key: 'basePrice', label: 'Price', render: (v) => `Rs. ${v?.toFixed(0) || 0}` },
@@ -179,8 +201,18 @@ export default function ProductsPage() {
 
       {/* Table */}
       <Card>
-        <div style={{ display: 'flex', gap: 12, padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ display: 'flex', gap: 12, padding: '16px 20px', borderBottom: '1px solid #f0f0f0', alignItems: 'center' }}>
           <SearchBar value={search} onChange={setSearch} placeholder="Search products…" />
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input 
+              type="checkbox" 
+              id="showInactive" 
+              checked={showInactive} 
+              onChange={(e) => setShowInactive(e.target.checked)} 
+              style={{ cursor: 'pointer' }}
+            />
+            <label htmlFor="showInactive" style={{ fontSize: 14, color: '#555', cursor: 'pointer' }}>Show Inactive</label>
+          </div>
         </div>
         {loading ? <Spinner /> : (
           <Table columns={columns} data={filtered} actions={actions} emptyMessage="No products found" />
@@ -299,13 +331,13 @@ export default function ProductsPage() {
         <FormField label="Product Image">
           <div style={{ width: '100%', height: 160, border: '1px dashed #ccc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9f9f9', position: 'relative' }}>
             {form.image ? (
-              <img src={form.image.startsWith('http') ? form.image : `${SERVER_URL}${form.image}`} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <img src={getImageUrl(form.image)} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             ) : (
               <div style={{ textAlign: 'center', color: '#888' }}>
                 {uploadingImage ? <Spinner /> : <span>Click to select image</span>}
               </div>
             )}
-            <input type="file" accept="image/*" onChange={handleImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} disabled={uploadingImage} />
+            <input type="file" accept="image/*" onClick={(e) => { e.target.value = null; }} onChange={handleImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} disabled={uploadingImage} />
           </div>
           {form.image && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>

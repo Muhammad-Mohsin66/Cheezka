@@ -10,6 +10,11 @@ body {
   min-height: 100vh;
 }
 
+img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Custom Scrollbar for premium look and visibility, especially on macOS */
 ::-webkit-scrollbar {
   width: 6px;

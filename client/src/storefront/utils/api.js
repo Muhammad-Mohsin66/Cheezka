@@ -10,10 +10,15 @@ async function parseJson(response) {
 }
 
 function getAuthHeaders() {
-  return { 
+  const headers = { 
     'Content-Type': 'application/json',
     'X-Session-Type': 'customer' 
   };
+  const token = localStorage.getItem('customerToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 function getFetchOptions(options = {}) {
