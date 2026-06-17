@@ -6200,14 +6200,6 @@ main#site-content hr.post-separator {
   padding-top: 96px!important;
   margin-bottom: 35px;
 }
-.woocommerce-custom {
-  
-
-  
-
-  
-
-}
 .woocommerce-custom .woocommerce-product-gallery__trigger {
   z-index: 3!important;
 }
@@ -6396,10 +6388,6 @@ main#site-content hr.post-separator {
   .woocommerce-custom p.woocommerce-result-count {
     margin-bottom: 48px;
   }
-}
-.woocommerce-custom.woocommerce-custom2 {
-  
-
 }
 .woocommerce-custom.woocommerce-custom2 .woocommerce-product-gallery.woocommerce-product-gallery--with-images .flex-control-nav.flex-control-thumbs {
   margin-right: -6px;
