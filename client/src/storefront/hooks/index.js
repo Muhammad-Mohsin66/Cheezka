@@ -276,9 +276,9 @@ export function useNavbarProfile(enabled = true) {
           }
         });
       };
-      const logoutHandler = (e) => {
+      const logoutHandler = async (e) => {
         e.preventDefault();
-        logout();
+        await logout();
         navigate('/login');
       };
 
