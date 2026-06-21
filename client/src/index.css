@@ -35,3 +35,22 @@ img {
   background: rgba(0, 0, 0, 0.3);
 }
 
+/* Fix product grid layout to have uniform square image aspect ratio and prevent oversized/stretched portrait images */
+.products .product .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage,
+.products.wooproduct2 .product .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage,
+.products .product.wooproduct3 .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage {
+  aspect-ratio: 1 / 1 !important;
+  width: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.products .product .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage img,
+.products.wooproduct2 .product .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage img,
+.products .product.wooproduct3 .woocommerce-LoopProduct-link.woocommerce-loop-product__link .wrappimage img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+
