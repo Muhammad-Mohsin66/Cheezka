@@ -88,12 +88,10 @@ const DashboardLayout = ({ children }) => {
   return (
     <div className="ck-admin-root">
       {/* Mobile Backdrop */}
-      {sidebarOpen && window.innerWidth <= 768 && (
-        <div 
-          className="ck-sidebar-backdrop" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div 
+        className={`ck-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`} 
+        onClick={() => setSidebarOpen(false)}
+      />
 
       {/* Sidebar */}
       <aside className={`ck-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>

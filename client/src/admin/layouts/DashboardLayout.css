@@ -204,6 +204,10 @@ body { font-family: 'Inter', sans-serif; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 .ck-page-content > * { animation: fadeIn 0.25s ease; }
 
+.ck-sidebar-backdrop {
+  display: none;
+}
+
 /* ── Mobile Responsiveness ── */
 @media (max-width: 768px) {
   .ck-sidebar {
@@ -231,7 +235,8 @@ body { font-family: 'Inter', sans-serif; }
   .ck-topbar {
     padding: 0 16px;
   }
-  .ck-sidebar-backdrop {
+  .ck-sidebar-backdrop.open {
+    display: block;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.5);

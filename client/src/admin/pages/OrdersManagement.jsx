@@ -536,7 +536,7 @@ export default function OrdersManagement() {
                 {/* Order Items Table */}
                 <h4 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700 }}>🛒 Order Items</h4>
                 <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', marginBottom: 20 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#fafaf8', borderBottom: '1px solid #ebebeb' }}>
                         <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', color: '#666' }}>Item</th>

@@ -294,8 +294,8 @@ const styles = {
     background: 'white',
   },
 
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'Inter, sans-serif' },
+  tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'Inter, sans-serif', tableLayout: 'auto' },
   th: {
     background: '#fafaf8', padding: '11px 16px',
     textAlign: 'left', fontWeight: 600, color: '#666',
