@@ -13,6 +13,14 @@ const STATUS_MAP = {
 export default function RefundsPage() {
   const { toasts, removeToast, showError, showSuccess } = useToast();
 
+  const getPaymentImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+    const serverUrl = apiBase.replace('/api', '');
+    return `${serverUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
   // States
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -212,6 +220,27 @@ export default function RefundsPage() {
             {viewModal.adminNote && (
               <div style={{ marginTop: 14, padding: 10, backgroundColor: '#f9f9fb', borderRadius: 8, borderLeft: '3px solid #FF6B35' }}>
                 <strong>Staff Note:</strong> {viewModal.adminNote}
+              </div>
+            )}
+
+            {/* Online payment receipt screenshot if present */}
+            {viewModal.payment?.screenshot && (
+              <div style={{ marginTop: 20, borderTop: '1px solid #eee', paddingTop: 14 }}>
+                <strong style={{ display: 'block', marginBottom: 8, color: '#333' }}>💳 Online Payment Receipt Verification</strong>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <a href={getPaymentImageUrl(viewModal.payment.screenshot)} target="_blank" rel="noreferrer" title="Click to view full image">
+                    <img 
+                      src={getPaymentImageUrl(viewModal.payment.screenshot)} 
+                      alt="Payment proof screenshot" 
+                      style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer' }}
+                    />
+                  </a>
+                  <div style={{ fontSize: 11, color: '#666', lineHeight: '1.6' }}>
+                    <p style={{ margin: '0 0 4px 0' }}><strong>Payment Method:</strong> {viewModal.payment.paymentMethod || 'Online'}</p>
+                    <p style={{ margin: '0 0 4px 0' }}><strong>Payment Status:</strong> {viewModal.payment.status || 'Verified'}</p>
+                    <p style={{ margin: '0' }}>Click on the thumbnail to open the full size receipt in a new tab.</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

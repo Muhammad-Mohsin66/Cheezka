@@ -98,7 +98,7 @@ refundSchema.index({ createdAt: -1 });
 refundSchema.pre('find', function () {
   if (!this.getOptions().lean) {
     this.populate('order', 'orderStatus grandTotal paymentMethod')
-      .populate('payment', 'amount status paymentMethod')
+      .populate('payment', 'amount status paymentMethod screenshot')
       .populate('user', 'name email phone')
       .populate('processedBy', 'name email');
   }
@@ -107,7 +107,7 @@ refundSchema.pre('find', function () {
 refundSchema.pre('findOne', function () {
   if (!this.getOptions().lean) {
     this.populate('order', 'orderStatus grandTotal paymentMethod')
-      .populate('payment', 'amount status paymentMethod')
+      .populate('payment', 'amount status paymentMethod screenshot')
       .populate('user', 'name email phone')
       .populate('processedBy', 'name email');
   }
