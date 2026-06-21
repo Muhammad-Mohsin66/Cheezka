@@ -124,7 +124,7 @@ exports.registerUser = async (req, res, next) => {
       user.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
       // Send verification email
-      const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      const baseUrl = req.headers.origin || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : 'http://localhost:3000');
       await sendVerificationEmail(email, verificationToken, baseUrl);
     } else {
       user.isEmailVerified = true;
@@ -282,7 +282,7 @@ exports.requestPasswordReset = async (req, res, next) => {
     await user.save();
 
     // Send reset email
-    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const baseUrl = req.headers.origin || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : 'http://localhost:3000');
     await sendPasswordResetEmail(email, resetToken, baseUrl);
 
     res.status(200).json({
