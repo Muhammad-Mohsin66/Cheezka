@@ -7,7 +7,7 @@ import './DashboardLayout.css';
 
 /* ─── DashboardLayout ────────────────────────────────────────────────────────── */
 const DashboardLayout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [badges, setBadges] = useState({ orders: 0, stock: 0, notifications: 0 });
   const [currentOrderIds, setCurrentOrderIds] = useState([]);
   const [currentStockIds, setCurrentStockIds] = useState([]);
@@ -87,6 +87,14 @@ const DashboardLayout = ({ children }) => {
 
   return (
     <div className="ck-admin-root">
+      {/* Mobile Backdrop */}
+      {sidebarOpen && window.innerWidth <= 768 && (
+        <div 
+          className="ck-sidebar-backdrop" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`ck-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         {/* Logo */}
@@ -125,6 +133,9 @@ const DashboardLayout = ({ children }) => {
                     key={item.path}
                     to={item.path}
                     className={`ck-nav-item ${currentPath === item.path ? 'active' : ''}`}
+                    onClick={() => {
+                      if (window.innerWidth <= 768) setSidebarOpen(false);
+                    }}
                   >
                     <span className="ck-nav-icon">{item.icon}</span>
                     <span className="ck-nav-label">{item.label}</span>
@@ -164,6 +175,13 @@ const DashboardLayout = ({ children }) => {
       <main className={`ck-main ${sidebarOpen ? 'open' : 'closed'}`}>
         {/* Top bar */}
         <header className="ck-topbar">
+          <button
+            className="ck-mobile-hamburger"
+            onClick={() => setSidebarOpen(true)}
+            style={{ display: 'none', background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', marginRight: 12, color: '#1a1a1a' }}
+          >
+            ☰
+          </button>
           <span className="ck-topbar-title">{pageTitle}</span>
 
           {badges.stock > 0 && (

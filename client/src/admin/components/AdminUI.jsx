@@ -306,6 +306,7 @@ const styles = {
   td: {
     padding: '12px 16px', color: '#333',
     borderBottom: '1px solid #f5f5f3', verticalAlign: 'middle',
+    whiteSpace: 'nowrap',
   },
   actionRow: { display: 'flex', gap: 6, flexWrap: 'nowrap' },
   actionBtn: {
