@@ -706,6 +706,7 @@ exports.updateDeliveryStatus = async (req, res) => {
 
   // Notify customer of delivery updates
   const customerId = order.customer?._id || order.customer;
+  const customer = order.customer && order.customer.email ? order.customer : await Customer.findById(order.customer);
   if (customerId) {
     let title = '';
     let message = '';
@@ -725,6 +726,14 @@ exports.updateDeliveryStatus = async (req, res) => {
         'order',
         order._id
       );
+
+      if (customer && customer.email) {
+        await notificationService.sendEmailNotification(
+          customer.email,
+          title,
+          message
+        );
+      }
     }
   }
 
