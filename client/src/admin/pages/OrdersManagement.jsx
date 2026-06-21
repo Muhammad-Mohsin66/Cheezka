@@ -315,7 +315,7 @@ export default function OrdersManagement() {
   const getPaymentImageUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
     const serverUrl = apiBase.replace('/api', '');
     return `${serverUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   };

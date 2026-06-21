@@ -19,6 +19,7 @@ export default function CheckoutPage() {
   });
   const [status, setStatus] = useState({ message: '', error: false });
   const [placing, setPlacing] = useState(false);
+  const notesRef = React.useRef(null);
 
   // Delivery Zones dynamic integration states
   const [deliveryZones, setDeliveryZones] = useState([]);
@@ -83,6 +84,14 @@ export default function CheckoutPage() {
     };
     fetchZonesAndBanks();
   }, []);
+
+  // Auto-resize notes textarea
+  useEffect(() => {
+    if (notesRef.current) {
+      notesRef.current.style.height = '38px';
+      notesRef.current.style.height = `${notesRef.current.scrollHeight}px`;
+    }
+  }, [form.notes]);
 
   // Sync state changes with localStorage
   const handleInputChange = (e) => {
@@ -438,12 +447,13 @@ export default function CheckoutPage() {
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label style={{ fontWeight: 700, color: '#1B2A49', marginBottom: '6px', display: 'block' }}>Order Notes (optional)</label>
               <textarea
+                ref={notesRef}
                 name="notes"
                 value={form.notes}
                 onChange={handleInputChange}
                 className="form-input"
                 placeholder="Special instructions or rider notes..."
-                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', minHeight: '80px', fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', minHeight: '38px', height: '38px', overflow: 'hidden', resize: 'none', fontFamily: 'inherit' }}
               />
             </div>
 

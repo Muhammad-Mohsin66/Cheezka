@@ -1,6 +1,21 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const getDynamicApiBase = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const { hostname, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5001/api';
+  }
+  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+  if (isIp) {
+    return `${protocol}//${hostname}:5001/api`;
+  }
+  return '/api';
+};
+
+const API_BASE_URL = getDynamicApiBase();
 
 const api = axios.create({
   baseURL: API_BASE_URL,

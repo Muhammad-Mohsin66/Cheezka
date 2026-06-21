@@ -1,4 +1,19 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const getDynamicApiBase = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const { hostname, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5001/api';
+  }
+  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+  if (isIp) {
+    return `${protocol}//${hostname}:5001/api`;
+  }
+  return '/api';
+};
+
+const API_BASE = getDynamicApiBase();
 const API_ROOT = API_BASE.replace(/\/api\/?$/, '');
 
 async function parseJson(response) {
@@ -110,5 +125,10 @@ export async function updateProfile(data) {
     method: 'PUT',
     body: JSON.stringify(data),
   }));
+  return parseJson(response);
+}
+
+export async function getPublicSettings() {
+  const response = await fetch(`${API_BASE}/settings/public`, { cache: 'no-store' });
   return parseJson(response);
 }

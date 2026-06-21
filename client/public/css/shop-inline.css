@@ -345,8 +345,10 @@
           margin-bottom: 8px;
         }
         .checkout-textarea {
-          min-height: 72px;
-          resize: vertical;
+          min-height: 38px;
+          height: 38px;
+          resize: none;
+          overflow: hidden;
         }
 
         .cart-foot {

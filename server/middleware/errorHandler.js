@@ -6,23 +6,16 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 const globalErrorHandler = (err, req, res, next) => {
+  console.error("GLOBAL ERROR HANDLER TRIGGERED:", err);
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
-  // Log error in development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('ERROR:', {
-      statusCode,
-      message,
-      stack: err.stack,
-    });
-  }
-
+  // Send the full error to the frontend so we can see it
   res.status(statusCode).json({
     success: false,
     statusCode,
-    message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    message: `DEBUG: ${err.message || message} | Stack: ${err.stack}`,
+    stack: err.stack,
   });
 };
 

@@ -2,7 +2,19 @@
   "use strict";
 
   var CART_KEY = "cheezka_cart";
-  var API_BASE = "http://localhost:5001/api";
+  var getDynamicApiBase = function() {
+    var hostname = window.location.hostname;
+    var protocol = window.location.protocol;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5001/api';
+    }
+    var isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+    if (isIp) {
+      return protocol + '//' + hostname + ':5001/api';
+    }
+    return '/api';
+  };
+  var API_BASE = getDynamicApiBase();
   var storeSettings = {
     taxPercentage: 0,
     deliveryCharge: 0
@@ -144,7 +156,7 @@
       cartDeliveryRow.style.display = cart.length > 0 ? "flex" : "none";
     }
     if (cartTaxRow) {
-      cartTaxRow.style.display = (cart.length > 0 && storeSettings.taxPercentage > 0) ? "flex" : "none";
+      cartTaxRow.style.display = cart.length > 0 ? "flex" : "none";
     }
 
     if (cart.length === 0) {
@@ -537,11 +549,21 @@
         });
         input.addEventListener("input", function () {
           saveCheckoutFormToStorage();
+          if (input.tagName === "TEXTAREA") {
+            input.style.height = "38px";
+            input.style.height = input.scrollHeight + "px";
+          }
         });
       }
     });
 
     restoreCheckoutFormFromStorage();
+
+    var orderNotesInput = document.getElementById("order-notes");
+    if (orderNotesInput) {
+      orderNotesInput.style.height = "38px";
+      orderNotesInput.style.height = orderNotesInput.scrollHeight + "px";
+    }
     
     // Initial toggle state for payment details
     var payMethodInput = document.getElementById("payment-method");

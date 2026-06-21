@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { checkHealth, createOrder, listOrders, updateOrderStatus, getCategories, getProducts, getDeals, getBankAccounts, updateProfile } from '../utils/api';
+import { checkHealth, createOrder, listOrders, updateOrderStatus, getCategories, getProducts, getDeals, getBankAccounts, getPublicSettings, updateProfile } from '../utils/api';
 import {
   getCart,
   setCart as persistCart,
@@ -15,7 +15,22 @@ import {
   saveCheckoutReturnPath,
 } from '../utils/checkoutAuth';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const getDynamicApiBase = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  const { hostname, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5001/api';
+  }
+  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+  if (isIp) {
+    return `${protocol}//${hostname}:5001/api`;
+  }
+  return '/api';
+};
+
+const API_BASE = getDynamicApiBase();
 
 function getLocalJson(key, fallback) {
   try {
@@ -35,7 +50,7 @@ export const getImageUrl = (prod) => {
     if (prod.image.startsWith('http') || prod.image.startsWith('data:')) {
       return prod.image;
     }
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const apiBase = API_BASE;
     const serverUrl = apiBase.replace('/api', '');
     return `${serverUrl}${prod.image.startsWith('/') ? '' : '/'}${prod.image}`;
   }
@@ -444,6 +459,7 @@ export function useShopPage() {
   const [menuVersion, setMenuVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [bankAccounts, setBankAccounts] = useState([]);
+  const [storeSettings, setStoreSettings] = useState({ taxPercentage: 0, deliveryCharge: 0 });
 
   useEffect(() => {
     getBankAccounts()
@@ -453,6 +469,17 @@ export function useShopPage() {
         }
       })
       .catch(err => console.error("Failed to fetch bank accounts:", err));
+
+    getPublicSettings()
+      .then(res => {
+        if (res.success && res.data) {
+          setStoreSettings({
+            taxPercentage: Number(res.data.TAX_PERCENTAGE) || 0,
+            deliveryCharge: Number(res.data.DELIVERY_BASE_CHARGE) || 0
+          });
+        }
+      })
+      .catch(err => console.error("Failed to fetch settings:", err));
   }, []);
 
   useEffect(() => {
@@ -526,12 +553,34 @@ export function useShopPage() {
     const countEl = document.getElementById('cart-count');
     const totalEl = document.getElementById('cart-total');
     const itemsEl = document.getElementById('cart-items');
+    
+    const subtotalEl = document.getElementById('cart-subtotal');
+    const deliveryEl = document.getElementById('cart-delivery');
+    const deliveryRowEl = document.getElementById('cart-delivery-row');
+    const taxEl = document.getElementById('cart-tax');
+    const taxRowEl = document.getElementById('cart-tax-row');
+
     if (!countEl || !totalEl || !itemsEl) return;
 
     const totalCount = cart.reduce((acc, item) => acc + item.qty, 0);
-    const totalAmount = cart.reduce((acc, item) => acc + item.qty * item.price, 0);
+    const subtotalAmount = cart.reduce((acc, item) => acc + item.qty * item.price, 0);
+    const taxAmount = Math.round((subtotalAmount * storeSettings.taxPercentage) / 100);
+    const deliveryAmount = cart.length > 0 ? storeSettings.deliveryCharge : 0;
+    const totalAmount = subtotalAmount + taxAmount + deliveryAmount;
+
     countEl.textContent = `${totalCount}`;
     totalEl.textContent = `${totalAmount}`;
+    
+    if (subtotalEl) subtotalEl.textContent = `${subtotalAmount}`;
+    if (deliveryEl) deliveryEl.textContent = `${deliveryAmount}`;
+    if (taxEl) taxEl.textContent = `${taxAmount}`;
+
+    if (deliveryRowEl) {
+      deliveryRowEl.style.display = cart.length > 0 ? "flex" : "none";
+    }
+    if (taxRowEl) {
+      taxRowEl.style.display = cart.length > 0 ? "flex" : "none";
+    }
 
     if (!cart.length) {
       itemsEl.innerHTML = '<div class="cart-empty">No items yet. Add your favorite menu items.</div>';
@@ -580,7 +629,7 @@ export function useShopPage() {
         });
       });
     });
-  }, [cart]);
+  }, [cart, storeSettings]);
 
   useEffect(() => {
     let active = true;
@@ -945,7 +994,7 @@ export function useShopPage() {
           formData.append('amount', savedOrder?.data?.grandTotal || total);
           formData.append('paymentMethod', mappedPaymentMethod);
 
-          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+          // Using global API_BASE
           const uploadHeaders = {};
           const token = localStorage.getItem('customerToken');
           if (token) uploadHeaders['Authorization'] = `Bearer ${token}`;

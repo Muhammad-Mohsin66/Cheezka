@@ -9,7 +9,7 @@ const STATUS_MAP = {
   false: { label: 'Inactive', bg: '#fee2e2', color: '#dc2626' },
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 const SERVER_URL = API_BASE_URL.replace('/api', '');
 
 const getImageUrl = (path) => {
@@ -53,7 +53,8 @@ export default function ProductsPage() {
       if (!res.ok) throw new Error(data.message || 'Failed to upload image');
       setForm((f) => ({ ...f, image: data.url }));
     } catch (err) {
-      setError(err.message || 'Failed to upload image');
+      console.error("UPLOAD ERROR:", err);
+      setError(`Upload Error: ${err.message}`);
     } finally {
       setUploadingImage(false);
     }
@@ -153,7 +154,9 @@ export default function ProductsPage() {
       setModal(null);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Save failed');
+      console.error("SAVE ERROR:", err, err.response);
+      const details = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      setError(`Error: ${err.response?.status} - ${details}`);
     } finally { setSaving(false); }
   };
 

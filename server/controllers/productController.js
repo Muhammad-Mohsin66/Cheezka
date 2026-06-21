@@ -11,7 +11,7 @@ const { createAuditEntry } = require('./auditLogController');
  */
 exports.createProduct = async (req, res, next) => {
   try {
-    const { name, description, category, basePrice, sizes, isDeal, dealItems, stockQuantity, lowStockThreshold, image } = req.body;
+    const fs = require("fs"); fs.writeFileSync("last_payload.txt", JSON.stringify(req.body)); const { name, description, category, basePrice, sizes, isDeal, dealItems, stockQuantity, lowStockThreshold, image } = req.body;
 
     // Validation
     if (!name || name.trim().length === 0) {
@@ -41,14 +41,14 @@ exports.createProduct = async (req, res, next) => {
     }
 
     // Validate sizes format
-    sizes.forEach((size) => {
+    for (const size of sizes) {
       if (!['S', 'M', 'L', 'XL'].includes(size.size)) {
         return next(new AppError('Invalid size. Allowed: S, M, L, XL', 400));
       }
       if (!size.price || size.price < 0) {
         return next(new AppError('Each size must have a valid price', 400));
       }
-    });
+    }
 
     const product = await Product.create({
       name: name.trim(),
@@ -201,7 +201,7 @@ exports.getProductsByCategory = async (req, res, next) => {
 exports.updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, category, basePrice, sizes, isDeal, dealItems, stockQuantity, lowStockThreshold, image, isActive } = req.body;
+    const fs = require("fs"); fs.writeFileSync("last_payload.txt", JSON.stringify(req.body)); const { name, description, category, basePrice, sizes, isDeal, dealItems, stockQuantity, lowStockThreshold, image, isActive } = req.body;
 
     if (!id || id.length !== 24) {
       return next(new AppError('Invalid product ID', 400));
@@ -228,14 +228,14 @@ exports.updateProduct = async (req, res, next) => {
 
     if (sizes && sizes.length > 0) {
       // Validate sizes
-      sizes.forEach((size) => {
+      for (const size of sizes) {
         if (!['S', 'M', 'L', 'XL'].includes(size.size)) {
           return next(new AppError('Invalid size. Allowed: S, M, L, XL', 400));
         }
         if (!size.price || size.price < 0) {
           return next(new AppError('Each size must have a valid price', 400));
         }
-      });
+      }
       product.sizes = sizes;
     }
 
