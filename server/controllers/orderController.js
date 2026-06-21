@@ -397,9 +397,13 @@ exports.updateOrderStatus = async (req, res) => {
     }
   }
 
-  // Prevent changing back from "Refunded" or "Refund Requested"
+  // Prevent changing back from "Refunded" or "Refund Requested" (except from Refund Requested to Refunded)
   if (['Refund Requested', 'Refunded'].includes(order.orderStatus)) {
-    throw new AppError(`Cannot change status of ${order.orderStatus} order`, 400);
+    if (order.orderStatus === 'Refund Requested' && orderStatus === 'Refunded') {
+      // Allow transition
+    } else {
+      throw new AppError(`Cannot change status of ${order.orderStatus} order`, 400);
+    }
   }
 
   // PAYMENT VERIFICATION RULE: If progressing order status and payment is not COD
@@ -433,6 +437,37 @@ exports.updateOrderStatus = async (req, res) => {
   // Auto-verify COD payments when delivered
   if (orderStatus === 'Delivered' && order.paymentMethod === 'COD') {
     order.paymentStatus = 'Verified';
+  }
+
+  // Sync associated Refund document if order is marked as Refunded
+  if (orderStatus === 'Refunded') {
+    try {
+      const Refund = require('../models/Refund');
+      const refund = await Refund.findOne({ order: order._id });
+      if (refund && refund.status !== 'Processed') {
+        const prevStatus = refund.status;
+        refund.status = 'Processed';
+        refund.processedBy = req.user.id;
+        refund.processedAt = new Date();
+        if (!refund.adminNote) {
+          refund.adminNote = 'Refund processed manually via order status update';
+        }
+        await refund.save();
+
+        // Log refund action
+        await StatusLogService.logRefundAction(
+          refund._id,
+          'processed',
+          req.user.id,
+          refund.amount,
+          refund.adminNote,
+          prevStatus,
+          'Processed'
+        );
+      }
+    } catch (err) {
+      console.error('Error syncing associated refund document:', err);
+    }
   }
 
   await order.save();
