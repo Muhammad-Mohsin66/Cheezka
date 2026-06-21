@@ -12,6 +12,7 @@ import ContactPage from './pages/ContactPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import OrdersPage from './pages/OrdersPage';
 import CustomerOrders from './pages/CustomerOrders';
@@ -148,6 +149,14 @@ export default function StorefrontRoutes() {
         element={
           <RouteFrame bodyClass="auth-page" title="Forgot Password – Cheezka Street Food" disableNavEnhancements>
             <ForgotPasswordPage />
+          </RouteFrame>
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <RouteFrame bodyClass="auth-page" title="Verify Email – Cheezka Street Food" disableNavEnhancements>
+            <VerifyEmailPage />
           </RouteFrame>
         }
       />

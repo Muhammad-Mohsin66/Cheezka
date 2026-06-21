@@ -132,3 +132,13 @@ export async function getPublicSettings() {
   const response = await fetch(`${API_BASE}/settings/public`, { cache: 'no-store' });
   return parseJson(response);
 }
+
+export async function verifyEmail(token) {
+  const response = await fetch(`${API_BASE}/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return parseJson(response);
+}
+
