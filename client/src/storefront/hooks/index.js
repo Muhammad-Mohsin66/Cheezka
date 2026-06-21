@@ -150,153 +150,147 @@ export function useNavbarProfile(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    const navMenu = document.getElementById('menu-menu-1');
-    if (!navMenu) return;
+    const navMenus = document.querySelectorAll('#menu-menu-1');
+    if (!navMenus.length) return;
 
-    let loginItem = null;
-    navMenu.querySelectorAll('li.menu-item').forEach((li) => {
-      const a = li.querySelector('a');
-      if (a) {
-        const text = (a.textContent || '').trim().toUpperCase();
-        const href = a.getAttribute('href') || '';
-        if (text === 'LOGIN' || href === '/login' || href === 'login.html' || href.endsWith('/login.html')) {
+    window.handleCheezkaLogout = async () => {
+      await logout();
+      navigate('/login');
+    };
+
+    const closeHandler = (e) => {
+      document.querySelectorAll('.profile-dropdown.ck-open').forEach(dd => {
+        if (dd.parentElement && !dd.parentElement.contains(e.target)) {
+          dd.classList.remove('ck-open');
+        }
+      });
+    };
+    
+    document.removeEventListener('click', window._ckCloseHandler);
+    window._ckCloseHandler = closeHandler;
+    document.addEventListener('click', window._ckCloseHandler);
+
+    navMenus.forEach(navMenu => {
+      let loginItem = null;
+      navMenu.querySelectorAll('li.menu-item').forEach((li) => {
+        const a = li.querySelector('a');
+        if (a && a.href && (a.href.includes('login') || a.textContent.toUpperCase() === 'LOGIN' || a.textContent.toUpperCase() === 'ACCOUNT')) {
           loginItem = li;
         }
+      });
+      if (!loginItem) return;
+
+      if (user && user.email) {
+        const avatarUrl = user.avatar || user.profileImage || null;
+        const initials = (() => {
+          if (!user.name) return '?';
+          const parts = user.name.trim().split(/\s+/);
+          if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        })();
+
+        const avatarHtml = avatarUrl
+          ? `<img src="${avatarUrl}" class="profile-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px;" alt="${user.name}" />`
+          : `<div class="profile-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background-color: #FF6B35; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 8px;">${initials}</div>`;
+
+        if (!document.getElementById('ck-profile-dropdown-style')) {
+          const style = document.createElement('style');
+          style.id = 'ck-profile-dropdown-style';
+          style.innerHTML = `
+            .profile-dropdown {
+              position: absolute !important;
+              top: 100% !important;
+              right: 0 !important;
+              margin-top: 10px !important;
+              background-color: #fff !important;
+              border-radius: 8px !important;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+              min-width: 200px !important;
+              opacity: 0 !important;
+              visibility: hidden !important;
+              transform: translateY(-10px) !important;
+              transition: all 0.3s ease !important;
+              z-index: 999999 !important;
+              display: block !important;
+            }
+            .profile-dropdown.ck-open {
+              opacity: 1 !important;
+              visibility: visible !important;
+              transform: translateY(0) !important;
+            }
+            .ck-profile-dd__header {
+              padding: 15px 20px !important;
+              border-bottom: 1px solid #eee !important;
+              text-align: left !important;
+            }
+            .ck-profile-dd__title {
+              margin: 0 !important;
+              font-weight: bold !important;
+              color: #333 !important;
+              font-size: 16px !important;
+              line-height: 1.2 !important;
+            }
+            .ck-profile-dd__email {
+              margin: 5px 0 0 !important;
+              font-size: 13px !important;
+              color: #777 !important;
+              line-height: 1.2 !important;
+            }
+            .profile-dropdown a, 
+            .profile-dropdown button {
+              display: block !important;
+              padding: 12px 20px !important;
+              color: #555 !important;
+              text-decoration: none !important;
+              background: none !important;
+              border: none !important;
+              width: 100% !important;
+              text-align: left !important;
+              cursor: pointer !important;
+              font-size: 14px !important;
+              transition: background 0.2s !important;
+              font-family: inherit !important;
+            }
+            .profile-dropdown a:hover, 
+            .profile-dropdown button:hover {
+              background-color: #f9f9f9 !important;
+              color: #FF6B35 !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        loginItem.innerHTML =
+          `<div style="display: flex; align-items: center; gap: 16px; position: relative;">` +
+          `<div id="navbar-bell-container"></div>` +
+          `<div style="position: relative; display: inline-block;">` +
+          `<button class="profile-btn ck-nav-cta" onclick="event.preventDefault(); event.stopPropagation(); const dd = this.nextElementSibling; if(dd) { document.querySelectorAll('.profile-dropdown').forEach(d => { if(d !== dd) d.classList.remove('ck-open'); }); dd.classList.toggle('ck-open'); }" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
+          avatarHtml +
+          `<span style="margin-left: 4px;">${(user.name || user.email.split('@')[0]).replace(/[<>&"']/g, '')}</span>` +
+          `</button>` +
+          `<div class="profile-dropdown">` +
+          `<div class="ck-profile-dd__header">` +
+          `<p class="ck-profile-dd__title">${(user.name || 'Account').replace(/[<>&"']/g, '')}</p>` +
+          `<p class="ck-profile-dd__email">${(user.email || '').replace(/[<>&"']/g, '')}</p>` +
+          `</div>` +
+          `<a href="/dashboard"><i class="fa fa-user ck-mr-6"></i>My Profile</a>` +
+          `<a href="/orders"><i class="fa fa-shopping-bag ck-mr-6"></i>My Orders</a>` +
+          `<button onclick="event.preventDefault(); window.handleCheezkaLogout();" class="ck-logout-btn"><i class="fa fa-sign-out-alt ck-mr-6"></i>Logout</button>` +
+          `</div>` +
+          `</div>` +
+          `</div>`;
+
+        loginItem.classList.add('ck-pos-rel');
+      } else {
+        loginItem.innerHTML =
+          `<a href="/login" class="ck-nav-cta"><i class="fa fa-sign-in-alt ck-mr-6"></i>LOGIN</a>`;
+        loginItem.classList.remove('ck-pos-rel');
       }
     });
 
-    if (!loginItem) return;
-
-    if (isAuthenticated && user) {
-      const avatarUrl = user.avatar || user.profileImage || null;
-      const initials = (() => {
-        if (!user.name) return '?';
-        const parts = user.name.trim().split(/\s+/);
-        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      })();
-
-      const avatarHtml = avatarUrl
-        ? `<img src="${avatarUrl}" class="profile-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px;" alt="${user.name}" />`
-        : `<div class="profile-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background-color: #FF6B35; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 8px;">${initials}</div>`;
-
-      if (!document.getElementById('ck-profile-dropdown-style')) {
-        const style = document.createElement('style');
-        style.id = 'ck-profile-dropdown-style';
-        style.innerHTML = `
-          .profile-dropdown {
-            position: absolute !important;
-            top: 100% !important;
-            right: 0 !important;
-            margin-top: 10px !important;
-            background-color: #fff !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
-            min-width: 200px !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-            transform: translateY(-10px) !important;
-            transition: all 0.3s ease !important;
-            z-index: 999999 !important;
-            display: block !important;
-          }
-          .profile-dropdown.ck-open {
-            opacity: 1 !important;
-            visibility: visible !important;
-            transform: translateY(0) !important;
-          }
-          .ck-profile-dd__header {
-            padding: 15px 20px !important;
-            border-bottom: 1px solid #eee !important;
-            text-align: left !important;
-          }
-          .ck-profile-dd__title {
-            margin: 0 !important;
-            font-weight: bold !important;
-            color: #333 !important;
-            font-size: 16px !important;
-            line-height: 1.2 !important;
-          }
-          .ck-profile-dd__email {
-            margin: 5px 0 0 !important;
-            font-size: 13px !important;
-            color: #777 !important;
-            line-height: 1.2 !important;
-          }
-          .profile-dropdown a, 
-          .profile-dropdown button {
-            display: block !important;
-            padding: 12px 20px !important;
-            color: #555 !important;
-            text-decoration: none !important;
-            background: none !important;
-            border: none !important;
-            width: 100% !important;
-            text-align: left !important;
-            cursor: pointer !important;
-            font-size: 14px !important;
-            transition: background 0.2s !important;
-            font-family: inherit !important;
-          }
-          .profile-dropdown a:hover, 
-          .profile-dropdown button:hover {
-            background-color: #f9f9f9 !important;
-            color: #FF6B35 !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
-
-      loginItem.innerHTML =
-        `<div style="display: flex; align-items: center; gap: 16px; position: relative;">` +
-        `<div id="navbar-bell-container"></div>` +
-        `<div style="position: relative; display: inline-block;">` +
-        `<button class="profile-btn ck-nav-cta" onclick="event.preventDefault(); event.stopPropagation(); const dd = this.nextElementSibling; if(dd) { document.querySelectorAll('.profile-dropdown').forEach(d => { if(d !== dd) d.classList.remove('ck-open'); }); dd.classList.toggle('ck-open'); }" style="display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer;">` +
-        avatarHtml +
-        `<span style="margin-left: 4px;">${(user.name || user.email.split('@')[0]).replace(/[<>&"']/g, '')}</span>` +
-        `</button>` +
-        `<div class="profile-dropdown">` +
-        `<div class="ck-profile-dd__header">` +
-        `<p class="ck-profile-dd__title">${(user.name || 'Account').replace(/[<>&"']/g, '')}</p>` +
-        `<p class="ck-profile-dd__email">${(user.email || '').replace(/[<>&"']/g, '')}</p>` +
-        `</div>` +
-        `<a href="/dashboard"><i class="fa fa-user ck-mr-6"></i>My Profile</a>` +
-        `<a href="/orders"><i class="fa fa-shopping-bag ck-mr-6"></i>My Orders</a>` +
-        `<button id="logout-btn"><i class="fa fa-sign-out-alt ck-mr-6"></i>Logout</button>` +
-        `</div>` +
-        `</div>` +
-        `</div>`;
-
-      const logoutBtns = loginItem.querySelectorAll('#logout-btn');
-
-      const closeHandler = (e) => {
-        document.querySelectorAll('.profile-dropdown.ck-open').forEach(dd => {
-          if (!dd.parentElement.contains(e.target)) {
-            dd.classList.remove('ck-open');
-          }
-        });
-      };
-      const logoutHandler = async (e) => {
-        e.preventDefault();
-        await logout();
-        navigate('/login');
-      };
-
-      logoutBtns.forEach(btn => btn.addEventListener('click', logoutHandler));
-      document.addEventListener('click', closeHandler);
-
-      loginItem.classList.add('ck-pos-rel');
-
-      return () => {
-        logoutBtns.forEach(btn => btn.removeEventListener('click', logoutHandler));
-        document.removeEventListener('click', closeHandler);
-      };
-    } else {
-      loginItem.innerHTML =
-        `<a href="/login" class="ck-nav-cta"><i class="fa fa-sign-in-alt ck-mr-6"></i>LOGIN</a>`;
-      loginItem.classList.remove('ck-pos-rel');
-    }
-    return undefined;
+    return () => {
+      document.removeEventListener('click', window._ckCloseHandler);
+    };
   }, [enabled, location.pathname, navigate, user, isAuthenticated, logout]);
 }
 
