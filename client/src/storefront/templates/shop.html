@@ -110,7 +110,19 @@
   </div>
 
   <div class="cart-foot">
-    <div class="cart-total">
+    <div class="cart-total" style="font-size: 14px; margin-bottom: 5px; color: #666;">
+      <span>Subtotal</span>
+      <span>Rs. <span id="cart-subtotal">0</span></span>
+    </div>
+    <div class="cart-total" style="font-size: 14px; margin-bottom: 5px; color: #666; display: none;" id="cart-delivery-row">
+      <span>Delivery</span>
+      <span>Rs. <span id="cart-delivery">0</span></span>
+    </div>
+    <div class="cart-total" style="font-size: 14px; margin-bottom: 10px; color: #666; display: none;" id="cart-tax-row">
+      <span>Tax</span>
+      <span>Rs. <span id="cart-tax">0</span></span>
+    </div>
+    <div class="cart-total" style="border-top: 1px solid #ececec; padding-top: 10px;">
       <span>Total</span>
       <span>Rs. <span id="cart-total">0</span></span>
     </div>

@@ -3,18 +3,38 @@
 
   var CART_KEY = "cheezka_cart";
   var API_BASE = "http://localhost:5001/api";
-  var bankAccounts = [];
+  var storeSettings = {
+    taxPercentage: 0,
+    deliveryCharge: 0
+  };
+
+  function fetchSettings() {
+    fetch(API_BASE + "/settings/public")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success && data.data) {
+          if (data.data.TAX_PERCENTAGE !== undefined) {
+            storeSettings.taxPercentage = Number(data.data.TAX_PERCENTAGE) || 0;
+          }
+          if (data.data.DELIVERY_BASE_CHARGE !== undefined) {
+            storeSettings.deliveryCharge = Number(data.data.DELIVERY_BASE_CHARGE) || 0;
+          }
+          renderCart();
+        }
+      })
+      .catch(function(err) { console.error("Failed to load settings:", err); });
+  }
 
   function fetchBankAccounts() {
     fetch(API_BASE + "/bank-accounts")
-      .then(res => res.json())
-      .then(data => {
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
         if (data.success && data.data) {
           bankAccounts = data.data;
           renderBankAccounts();
         }
       })
-      .catch(err => console.error("Failed to load bank accounts:", err));
+      .catch(function(err) { console.error("Failed to load bank accounts:", err); });
   }
 
   function renderBankAccounts() {
@@ -26,7 +46,7 @@
       return;
     }
 
-    container.innerHTML = bankAccounts.map(bank => {
+    container.innerHTML = bankAccounts.map(function(bank) {
       return `
         <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; font-size: 11px; color: #334155;">
           <div style="font-weight: bold; color: #0f172a; margin-bottom: 2px;">${escapeHtml(bank.bankName)}</div>
@@ -97,15 +117,35 @@
     var cart = getCart();
     var cartItems = document.getElementById("cart-items");
     var cartCount = document.getElementById("cart-count");
+    
+    var cartSubtotalEl = document.getElementById("cart-subtotal");
+    var cartDeliveryEl = document.getElementById("cart-delivery");
+    var cartDeliveryRow = document.getElementById("cart-delivery-row");
+    var cartTaxEl = document.getElementById("cart-tax");
+    var cartTaxRow = document.getElementById("cart-tax-row");
     var cartTotal = document.getElementById("cart-total");
 
     if (!cartItems || !cartCount || !cartTotal) return;
 
     var totalCount = cart.reduce(function (acc, item) { return acc + item.qty; }, 0);
-    var totalAmount = cart.reduce(function (acc, item) { return acc + (item.qty * item.price); }, 0);
+    var subtotalAmount = cart.reduce(function (acc, item) { return acc + (item.qty * item.price); }, 0);
+    var taxAmount = Math.round((subtotalAmount * storeSettings.taxPercentage) / 100);
+    var deliveryAmount = cart.length > 0 ? storeSettings.deliveryCharge : 0;
+    var totalAmount = subtotalAmount + taxAmount + deliveryAmount;
 
     cartCount.textContent = String(totalCount);
+    
+    if (cartSubtotalEl) cartSubtotalEl.textContent = String(subtotalAmount);
+    if (cartDeliveryEl) cartDeliveryEl.textContent = String(deliveryAmount);
+    if (cartTaxEl) cartTaxEl.textContent = String(taxAmount);
     cartTotal.textContent = String(totalAmount);
+
+    if (cartDeliveryRow) {
+      cartDeliveryRow.style.display = cart.length > 0 ? "flex" : "none";
+    }
+    if (cartTaxRow) {
+      cartTaxRow.style.display = (cart.length > 0 && storeSettings.taxPercentage > 0) ? "flex" : "none";
+    }
 
     if (cart.length === 0) {
       cartItems.innerHTML = '<div class="cart-empty">No items yet. Add your favorite menu items.</div>';
@@ -437,6 +477,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    fetchSettings();
     fetchBankAccounts();
     enhanceMenuCards();
     enhanceListRows();
