@@ -15,8 +15,8 @@ router.post(
       return res.status(400).json({ success: false, message: 'Please upload a valid image file.' });
     }
 
-    // The image path relative to the root URL
-    const imagePath = `/uploads/products/${req.file.filename}`;
+    // The image path from Cloudinary
+    const imagePath = req.file.path;
 
     res.status(201).json({
       success: true,
