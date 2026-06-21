@@ -117,10 +117,16 @@ const RiderDeliveries = () => {
       render: (value, row) => row.customer?.name || 'N/A',
     },
     {
-      key: 'customer',
+      key: 'phone',
       label: 'Phone',
       width: '130px',
-      render: (value, row) => row.customer?.phone || 'N/A',
+      render: (value, row) => row.phoneNumber || row.customer?.phone || 'N/A',
+    },
+    {
+      key: 'address',
+      label: 'Address',
+      width: '200px',
+      render: (value, row) => row.shippingAddress || 'N/A',
     },
     {
       key: 'grandTotal',

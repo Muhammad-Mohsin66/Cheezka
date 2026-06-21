@@ -235,7 +235,7 @@ const CustomerOrders = () => {
                   </div>
 
                   {/* Rider Info (if assigned) */}
-                  {order.rider && (
+                  {order.rider && ['Handover to Rider', 'Delivered'].includes(order.orderStatus) && (
                     <div style={styles.section}>
                       <h3 style={styles.sectionTitle}>🚗 Delivery</h3>
                       <div style={styles.riderInfo}>

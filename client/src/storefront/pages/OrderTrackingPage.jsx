@@ -661,7 +661,7 @@ export default function OrderTrackingPage() {
             {/* Right Summary Sidebar Panel */}
             <div className="layout-right">
               {/* Assigned Rider details */}
-              {order.rider ? (
+              {order.rider && ['Handover to Rider', 'Delivered'].includes(order.orderStatus) ? (
                 <div className="rider-section">
                   <h3>Assigned Rider</h3>
                   <div className="rider-details">
