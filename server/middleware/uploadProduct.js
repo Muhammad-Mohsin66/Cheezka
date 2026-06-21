@@ -15,7 +15,8 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'cheezka/products',
-    allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
     public_id: (req, file) => {
       const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
       return `product-${req.user ? req.user.id : 'anon'}-${uniqueSuffix}`;
