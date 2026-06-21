@@ -132,18 +132,25 @@ exports.registerUser = async (req, res, next) => {
 
     await user.save();
 
-    // Generate JWT token
-    const token = generateToken(user._id, user.role);
-    setTokenCookie(res, token, user.role);
+    if (requireVerification) {
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully. Please verify your email.',
+        requiresVerification: true,
+      });
+    } else {
+      // Generate JWT token
+      const token = generateToken(user._id, user.role);
+      setTokenCookie(res, token, user.role);
 
-    res.status(201).json({
-      success: true,
-      message: requireVerification 
-        ? 'User registered successfully. Please verify your email.' 
-        : 'User registered successfully.',
-      token,
-      user: user.toJSON(),
-    });
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully.',
+        requiresVerification: false,
+        token,
+        user: user.toJSON(),
+      });
+    }
   } catch (error) {
     next(error);
   }
@@ -179,6 +186,15 @@ exports.loginUser = async (req, res, next) => {
 
     if (!isPasswordCorrect) {
       return next(new AppError('Invalid email or password', 401));
+    }
+
+    // Check email verification
+    const SystemSetting = require('../models/SystemSetting');
+    const emailVerifSetting = await SystemSetting.findOne({ key: 'EMAIL_VERIFICATION_REQUIRED' });
+    const requireVerification = emailVerifSetting ? (emailVerifSetting.value === true || emailVerifSetting.value === 'true') : false;
+
+    if (requireVerification && !user.isEmailVerified) {
+      return next(new AppError('Please verify your email address before logging in. Check your inbox for the verification link.', 403));
     }
 
     // Generate JWT token

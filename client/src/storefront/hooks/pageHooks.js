@@ -246,6 +246,11 @@ export function useSignupPage() {
         return;
       }
 
+      if (data.requiresVerification) {
+        setStatus({ message: data.message, bg: '#e8f5e9', color: '#2e7d32' });
+        return;
+      }
+
       const guestCart = preserveGuestCartThroughAuth();
       authLogin(data.user, data.token);
       if (guestCart.length) {
