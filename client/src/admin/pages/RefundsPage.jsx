@@ -90,6 +90,7 @@ export default function RefundsPage() {
       r.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
       r.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
       r.customer?.phone?.includes(search) ||
+      r.user?.phone?.includes(search) ||
       r._id?.toLowerCase().includes(search.toLowerCase()) ||
       (r.order?._id || r.order)?.toString().toLowerCase().includes(search.toLowerCase());
       
@@ -193,8 +194,8 @@ export default function RefundsPage() {
             {[
               ['Refund ID', `#${viewModal._id?.slice(-8).toUpperCase()}`],
               ['Customer', viewModal.customer?.name || viewModal.user?.name || '—'],
-              ['Customer Email', viewModal.customer?.email || '—'],
-              ['Customer Phone', viewModal.customer?.phone || '—'],
+              ['Customer Email', viewModal.user?.email || viewModal.customer?.email || '—'],
+              ['Customer Phone', viewModal.user?.phone || viewModal.customer?.phone || '—'],
               ['Order Reference', `#${(viewModal.order?._id || viewModal.order)?.toString().slice(-8).toUpperCase()}`],
               ['Refund Amount', `Rs. ${viewModal.amount}`],
               ['Customer Reason', viewModal.reason],
